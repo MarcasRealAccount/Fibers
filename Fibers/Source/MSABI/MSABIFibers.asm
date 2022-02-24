@@ -1,7 +1,5 @@
 %include "Fibers/Utils/Core.asminc"
 
-%if BUILD_IS_SYSTEM_WINDOWS
-
 struc Registers
 	.m_RBX: resq 1
 	.m_RDI: resq 1
@@ -13,6 +11,17 @@ struc Registers
 	.m_R14: resq 1
 	.m_R15: resq 1
 	.m_RIP: resq 1
+
+	.m_XMM6:  reso 1
+	.m_XMM7:  reso 1
+	.m_XMM8:  reso 1
+	.m_XMM9:  reso 1
+	.m_XMM10: reso 1
+	.m_XMM11: reso 1
+	.m_XMM12: reso 1
+	.m_XMM13: reso 1
+	.m_XMM14: reso 1
+	.m_XMM15: reso 1
 endstruc
 
 struc EntrypointRegisters
@@ -27,7 +36,7 @@ struc EntrypointRegisters
 	.m_XMM3: reso 1
 endstruc
 
-GlobalLabel storeFiberStates ; RCX => storeRegisters, RDX => returnAddress
+GlobalLabel msabiStoreFiberStates ; RCX => storeRegisters, RDX => returnAddress
 	mov [rcx + Registers.m_RBX], rbx
 	mov [rcx + Registers.m_RDI], rdi
 	mov [rcx + Registers.m_RSI], rsi
@@ -47,10 +56,21 @@ GlobalLabel storeFiberStates ; RCX => storeRegisters, RDX => returnAddress
 		mov rax, [rsp]
 		mov [rcx + Registers.m_RIP], rax
 
+	vmovapd [rcx + Registers.m_XMM6], xmm6
+	vmovapd [rcx + Registers.m_XMM7], xmm7
+	vmovapd [rcx + Registers.m_XMM8], xmm8
+	vmovapd [rcx + Registers.m_XMM9], xmm9
+	vmovapd [rcx + Registers.m_XMM10], xmm10
+	vmovapd [rcx + Registers.m_XMM11], xmm11
+	vmovapd [rcx + Registers.m_XMM12], xmm12
+	vmovapd [rcx + Registers.m_XMM13], xmm13
+	vmovapd [rcx + Registers.m_XMM14], xmm14
+	vmovapd [rcx + Registers.m_XMM15], xmm15
+
 	.Exit:
 		ret
 
-GlobalLabel restoreFiberStates ; RCX => restoreRegisters, RDX => entrypointRegisters
+GlobalLabel msabiRestoreFiberStates ; RCX => restoreRegisters, RDX => entrypointRegisters
 	mov rbx, [rcx + Registers.m_RBX]
 	mov rdi, [rcx + Registers.m_RDI]
 	mov rsi, [rcx + Registers.m_RSI]
@@ -63,6 +83,17 @@ GlobalLabel restoreFiberStates ; RCX => restoreRegisters, RDX => entrypointRegis
 	mov rax, [rcx + Registers.m_RIP]
 	sub rsp, 8h
 	mov [rsp], rax
+
+	vmovapd xmm6, [rcx + Registers.m_XMM6]
+	vmovapd xmm7, [rcx + Registers.m_XMM7]
+	vmovapd xmm8, [rcx + Registers.m_XMM8]
+	vmovapd xmm9, [rcx + Registers.m_XMM9]
+	vmovapd xmm10, [rcx + Registers.m_XMM10]
+	vmovapd xmm11, [rcx + Registers.m_XMM11]
+	vmovapd xmm12, [rcx + Registers.m_XMM12]
+	vmovapd xmm13, [rcx + Registers.m_XMM13]
+	vmovapd xmm14, [rcx + Registers.m_XMM14]
+	vmovapd xmm15, [rcx + Registers.m_XMM15]
 
 	cmp rdx, 0h
 	je .Exit
@@ -80,7 +111,7 @@ GlobalLabel restoreFiberStates ; RCX => restoreRegisters, RDX => entrypointRegis
 	.Exit:
 		ret
 
-GlobalLabel storeAndRestoreFiberStates ; RCX => storeRegisters, RDX => returnAddress, R8 => restoreRegisters, R9 => entrypointRegisters
+GlobalLabel msabiStoreAndRestoreFiberStates ; RCX => storeRegisters, RDX => returnAddress, R8 => restoreRegisters, R9 => entrypointRegisters
 	mov [rcx + Registers.m_RBX], rbx
 	mov [rcx + Registers.m_RDI], rdi
 	mov [rcx + Registers.m_RSI], rsi
@@ -99,6 +130,17 @@ GlobalLabel storeAndRestoreFiberStates ; RCX => storeRegisters, RDX => returnAdd
 	.OrigRIPStore:
 		mov rax, [rsp]
 		mov [rcx + Registers.m_RIP], rax
+		
+	vmovapd [rcx + Registers.m_XMM6], xmm6
+	vmovapd [rcx + Registers.m_XMM7], xmm7
+	vmovapd [rcx + Registers.m_XMM8], xmm8
+	vmovapd [rcx + Registers.m_XMM9], xmm9
+	vmovapd [rcx + Registers.m_XMM10], xmm10
+	vmovapd [rcx + Registers.m_XMM11], xmm11
+	vmovapd [rcx + Registers.m_XMM12], xmm12
+	vmovapd [rcx + Registers.m_XMM13], xmm13
+	vmovapd [rcx + Registers.m_XMM14], xmm14
+	vmovapd [rcx + Registers.m_XMM15], xmm15
 
 	.SetupRegisters:
 		mov rbx, [r8 + Registers.m_RBX]
@@ -113,6 +155,17 @@ GlobalLabel storeAndRestoreFiberStates ; RCX => storeRegisters, RDX => returnAdd
 		mov rax, [r8 + Registers.m_RIP]
 		sub rsp, 8h
 		mov [rsp], rax
+
+		vmovapd xmm6, [rcx + Registers.m_XMM6]
+		vmovapd xmm7, [rcx + Registers.m_XMM7]
+		vmovapd xmm8, [rcx + Registers.m_XMM8]
+		vmovapd xmm9, [rcx + Registers.m_XMM9]
+		vmovapd xmm10, [rcx + Registers.m_XMM10]
+		vmovapd xmm11, [rcx + Registers.m_XMM11]
+		vmovapd xmm12, [rcx + Registers.m_XMM12]
+		vmovapd xmm13, [rcx + Registers.m_XMM13]
+		vmovapd xmm14, [rcx + Registers.m_XMM14]
+		vmovapd xmm15, [rcx + Registers.m_XMM15]
 
 	cmp r9, 0h
 	je .Exit
@@ -129,5 +182,3 @@ GlobalLabel storeAndRestoreFiberStates ; RCX => storeRegisters, RDX => returnAdd
 
 	.Exit:
 		ret
-
-%endif

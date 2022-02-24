@@ -1,7 +1,5 @@
 %include "Fibers/Utils/Core.asminc"
 
-%if !BUILD_IS_SYSTEM_WINDOWS
-
 struc Registers
 	.m_RBX: resq 1
 	.m_RBP: resq 1
@@ -31,7 +29,7 @@ struc EntrypointRegisters
 	.m_XMM7: reso 1
 endstruc
 
-GlobalLabel storeFiberStates ; RDI => storeRegisters, RSI => returnAddress
+GlobalLabel sysvabiStoreFiberStates ; RDI => storeRegisters, RSI => returnAddress
 	mov [rdi + Registers.m_RBX], rbx
 	mov [rdi + Registers.m_RBP], rbp
 	mov rax, rsp
@@ -52,7 +50,7 @@ GlobalLabel storeFiberStates ; RDI => storeRegisters, RSI => returnAddress
 	.Exit:
 		ret
 
-GlobalLabel restoreFiberStates ; RDI => restoreRegisters, RSI => entrypointRegisters
+GlobalLabel sysvabiRestoreFiberStates ; RDI => restoreRegisters, RSI => entrypointRegisters
 	mov rbx, [rdi + Registers.m_RBX]
 	mov rbp, [rdi + Registers.m_RBP]
 	mov rsp, [rdi + Registers.m_RSP]
@@ -86,7 +84,7 @@ GlobalLabel restoreFiberStates ; RDI => restoreRegisters, RSI => entrypointRegis
 	.Exit:
 		ret
 
-GlobalLabel storeAndRestoreFiberStates ; RDI => storeRegisters, RSI => returnAddress, RDX => restoreRegisters, RCX => entrypointRegisters
+GlobalLabel sysvabiStoreAndRestoreFiberStates ; RDI => storeRegisters, RSI => returnAddress, RDX => restoreRegisters, RCX => entrypointRegisters
 	mov [rdi + Registers.m_RBX], rbx
 	mov [rdi + Registers.m_RBP], rbp
 	mov rax, rsp
@@ -137,5 +135,3 @@ GlobalLabel storeAndRestoreFiberStates ; RDI => storeRegisters, RSI => returnAdd
 
 	.Exit:
 		ret
-
-%endif

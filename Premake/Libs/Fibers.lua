@@ -13,7 +13,7 @@ function fibers:setup()
 	self.location = common:projectLocation()
 
 	kind("StaticLib")
-	common:outDirs(true)
+	common:outDirs(false)
 	
 	common:addPCH("%{prj.location}/Source/PCH.cpp", "%{prj.location/Source/PCH.h")
 

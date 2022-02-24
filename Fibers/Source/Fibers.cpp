@@ -2,9 +2,8 @@
 
 #include <vector>
 
-extern "C" void storeFiberStates(Fibers::Details::Registers& storeRegisters, void* returnAddress);
-extern "C" void restoreFiberStates(Fibers::Details::Registers& restoreRegisters, Fibers::Details::EntrypointRegisters* entrypointRegisters);
-extern "C" void storeAndRestoreFiberStates(Fibers::Details::Registers& storeRegisters, void* returnAddress, Fibers::Details::Registers& restoreRegisters, Fibers::Details::EntrypointRegisters* entrypointRegisters);
+#include "Fibers/MSABI/MSABIFibers.h"
+#include "Fibers/SYSV/SYSVABIFibers.h"
 
 namespace Fibers
 {

@@ -16,6 +16,7 @@ namespace Fibers
 		{
 		public:
 			std::uint64_t m_RBX = 0, m_RDI = 0, m_RSI = 0, m_RBP = 0, m_RSP = 0, m_R12 = 0, m_R13 = 0, m_R14 = 0, m_R15 = 0, m_RIP = 0;
+			XMM           m_XMM6, m_XMM7, m_XMM8, m_XMM9, m_XMM10, m_XMM11, m_XMM12, m_XMM13, m_XMM14, m_XMM15;
 		};
 
 		struct EntrypointRegisters

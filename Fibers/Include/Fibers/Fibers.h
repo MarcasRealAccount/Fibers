@@ -51,7 +51,14 @@ namespace Fibers
 		template <class T>
 		T pop();
 
+		template <class... Args>
+		void pushMSAbi(void* returnAddress, Args&&... args);
+		template <class... Args>
+		void pushSYSVAbi(void* returnAddress, Args&&... args);
+
 #if BUILD_IS_SYSTEM_WINDOWS
+		template <std::size_t Index, class Arg0, class... Args>
+		void pushObject(Arg0&& arg0, Args&&... args);
 		template <std::size_t Index, class Arg0, class... Args>
 		void pushArgument(Arg0&& arg0, Args&&... args);
 #else
@@ -67,7 +74,7 @@ namespace Fibers
 		void destroyArgument();
 #else
 		template <std::size_t IntIndex, std::size_t FloatIndex, class Arg0, class... Args>
-		void destroyArgument();
+		void        destroyArgument();
 #endif
 
 		template <class... Args>
@@ -126,7 +133,11 @@ namespace Fibers
 	template <class T>
 	std::size_t Fiber::push(T&& v)
 	{
+#if BUILD_IS_SYSTEM_WINDOWS
+		std::size_t stackAllocationSize = (sizeof(T) + 7) / 8 * 8;
+#else
 		std::size_t stackAllocationSize = (sizeof(T) + 15) / 16 * 16;
+#endif
 		m_State.m_RSP -= stackAllocationSize;
 		*reinterpret_cast<T*>(m_State.m_RSP) = std::forward<T>(v);
 		return stackAllocationSize;
@@ -135,11 +146,31 @@ namespace Fibers
 	template <class T>
 	T Fiber::pop()
 	{
+#if BUILD_IS_SYSTEM_WINDOWS
+		std::size_t stackAllocationSize = (sizeof(T) + 7) / 8 * 8;
+#else
 		std::size_t stackAllocationSize = (sizeof(T) + 15) / 16 * 16;
+#endif
 
 		T v = std::forward<T>(*reinterpret_cast<T*>(m_State.m_RSP));
 		m_State.m_RSP += stackAllocationSize;
 		return v;
+	}
+
+	template <class... Args>
+	void Fiber::pushMSAbi(void* returnAddress, Args&&... args)
+	{
+		// Get total stack size required and align to correct 16 byte boundary
+		// Push 3, 5, 6, 7, 9+ byte objects
+		// Push 1, 2, 4, 8 byte objects or references to ^
+		m_State.m_RSP -= 0x20;
+		pushq(reinterpret_cast<std::uintptr_t>(returnAddress));
+	}
+
+	template <class... Args>
+	void Fiber::pushSYSVAbi(void* returnAddress, Args&&... args)
+	{
+		pushq(reinterpret_cast<std::uintptr_t>(returnAddress));
 	}
 
 #if BUILD_IS_SYSTEM_WINDOWS
@@ -261,6 +292,7 @@ namespace Fibers
 		if constexpr (sizeof...(Args) > 0)
 		{
 #if BUILD_IS_SYSTEM_WINDOWS
+			pushObjects<0, Args...>(std::forward<Args>(args)...);
 			pushArgument<0, Args...>(std::forward<Args>(args)...);
 #else
 			pushArgument<0, 0, Args...>(std::forward<Args>(args)...);
@@ -290,13 +322,13 @@ namespace Fibers
 				else
 				{
 					reinterpret_cast<Arg0*>(m_State.m_RSP)->~Arg0();
-					m_State.m_RSP += (sizeof(Arg0) + 15) / 16 * 16;
+					m_State.m_RSP += (sizeof(Arg0) + 7) / 8 * 8;
 				}
 			}
 			else
 			{
 				reinterpret_cast<Arg0*>(m_State.m_RSP)->~Arg0();
-				m_State.m_RSP += (sizeof(Arg0) + 15) / 16 * 16;
+				m_State.m_RSP += (sizeof(Arg0) + 7) / 8 * 8;
 			}
 		}
 		else
@@ -314,13 +346,13 @@ namespace Fibers
 				else
 				{
 					reinterpret_cast<Arg0*>(m_State.m_RSP)->~Arg0();
-					m_State.m_RSP += (sizeof(Arg0) + 15) / 16 * 16;
+					m_State.m_RSP += (sizeof(Arg0) + 7) / 8 * 8;
 				}
 			}
 			else
 			{
 				reinterpret_cast<Arg0*>(m_State.m_RSP)->~Arg0();
-				m_State.m_RSP += (sizeof(Arg0) + 15) / 16 * 16;
+				m_State.m_RSP += (sizeof(Arg0) + 7) / 8 * 8;
 			}
 		}
 	}
