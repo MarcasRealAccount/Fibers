@@ -29,10 +29,10 @@ namespace Fibers
 	      m_StackSize(move.m_StackSize),
 	      m_Finished(move.m_Finished),
 	      m_Entry(move.m_Entry),
+	      m_Destructor(move.m_Destructor),
 	      m_EntryState(move.m_EntryState),
 	      m_State(move.m_State),
-	      m_ReturnState(move.m_ReturnState),
-	      m_Destructor(move.m_Destructor)
+	      m_ReturnState(move.m_ReturnState)
 	{
 		move.m_Stack = nullptr;
 	}
@@ -95,7 +95,7 @@ namespace Fibers
 		m_State.m_RSP = stackTop;
 	}
 
-	void Fiber::pushb(std::uint8_t byte)
+	/*void Fiber::pushb(std::uint8_t byte)
 	{
 		m_State.m_RSP -= 1;
 		*reinterpret_cast<std::uint8_t*>(m_State.m_RSP) = byte;
@@ -111,7 +111,7 @@ namespace Fibers
 	{
 		m_State.m_RSP -= 4;
 		*reinterpret_cast<std::uint32_t*>(m_State.m_RSP) = dword;
-	}
+	}*/
 
 	void Fiber::pushq(std::uint64_t qword)
 	{
@@ -119,7 +119,7 @@ namespace Fibers
 		*reinterpret_cast<std::uint64_t*>(m_State.m_RSP) = qword;
 	}
 
-	std::uint8_t Fiber::popb()
+	/*std::uint8_t Fiber::popb()
 	{
 		auto byte = *reinterpret_cast<std::uint8_t*>(m_State.m_RSP);
 		m_State.m_RSP += 1;
@@ -145,5 +145,5 @@ namespace Fibers
 		auto qword = *reinterpret_cast<std::uint64_t*>(m_State.m_RSP);
 		m_State.m_RSP -= 8;
 		return qword;
-	}
+	}*/
 } // namespace Fibers

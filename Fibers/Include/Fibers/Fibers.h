@@ -25,8 +25,11 @@ namespace Fibers
 		Fiber();
 		Fiber(Fiber&& move) noexcept;
 
-		template <class Function, class... Args>
-		Fiber(std::size_t stackSize, Function&& function, Args&&... args);
+		template <class Function>
+		Fiber(std::size_t stackSize, Function&& function);
+
+		//template <class Function, class... Args>
+		//Fiber(std::size_t stackSize, Function&& function, Args&&... args);
 
 		~Fiber();
 
@@ -36,23 +39,24 @@ namespace Fibers
 
 	private:
 		void createStack(std::size_t stackSize);
-		void pushb(std::uint8_t byte);
+		/*void pushb(std::uint8_t byte);
 		void pushw(std::uint16_t word);
-		void pushd(std::uint32_t dword);
+		void pushd(std::uint32_t dword);*/
 		void pushq(std::uint64_t qword);
 
-		std::uint8_t  popb();
+		/*std::uint8_t  popb();
 		std::uint16_t popw();
 		std::uint32_t popd();
-		std::uint64_t popq();
+		std::uint64_t popq();*/
 
 		template <class T>
 		std::size_t push(T&& v);
-		template <class T>
+		/*template <class T>
 		T pop();
 
 		template <class... Args>
 		void pushMSAbi(void* returnAddress, Args&&... args);
+
 		template <class... Args>
 		void pushSYSVAbi(void* returnAddress, Args&&... args);
 
@@ -78,7 +82,7 @@ namespace Fibers
 #endif
 
 		template <class... Args>
-		void destroyArguments();
+		void destroyArguments();*/
 
 		template <class Function, class... Args>
 		void destroyEntry();
@@ -96,7 +100,32 @@ namespace Fibers
 		Details::Registers m_ReturnState;
 	};
 
-	template <class Function, class... Args>
+	template <class Function>
+	Fiber::Fiber(std::size_t stackSize, Function&& function)
+	{
+		m_Entry    = true;
+		m_Finished = false;
+		static_assert(std::is_invocable_v<Function>);
+		using ClassType = std::remove_reference_t<Function>;
+
+		createStack(stackSize);
+
+		m_Destructor = Details::UBCast<decltype(m_Destructor)>(&Fiber::destroyEntry<Function>);
+
+		if constexpr (std::is_class_v<ClassType>)
+		{
+			push<Function>(std::forward<Function>(function));
+			pushq(reinterpret_cast<std::uintptr_t>(&exitFiber));
+			m_State.m_RIP = Details::UBCast<std::uintptr_t>(&ClassType::operator());
+		}
+		else
+		{
+			pushq(reinterpret_cast<std::uintptr_t>(&exitFiber));
+			m_State.m_RIP = Details::UBCast<std::uintptr_t>(function);
+		}
+	}
+
+	/*template <class Function, class... Args>
 	Fiber::Fiber(std::size_t stackSize, Function&& function, Args&&... args)
 	{
 		m_Entry    = true;
@@ -128,7 +157,7 @@ namespace Fibers
 			pushq(reinterpret_cast<std::uintptr_t>(&exitFiber));
 			m_State.m_RIP = Details::UBCast<std::uintptr_t>(function);
 		}
-	}
+	}*/
 
 	template <class T>
 	std::size_t Fiber::push(T&& v)
@@ -143,7 +172,7 @@ namespace Fibers
 		return stackAllocationSize;
 	}
 
-	template <class T>
+	/*template <class T>
 	T Fiber::pop()
 	{
 #if BUILD_IS_SYSTEM_WINDOWS
@@ -155,9 +184,9 @@ namespace Fibers
 		T v = std::forward<T>(*reinterpret_cast<T*>(m_State.m_RSP));
 		m_State.m_RSP += stackAllocationSize;
 		return v;
-	}
+	}*/
 
-	template <class... Args>
+	/*template <class... Args>
 	void Fiber::pushMSAbi(void* returnAddress, Args&&... args)
 	{
 		// Get total stack size required and align to correct 16 byte boundary
@@ -165,15 +194,15 @@ namespace Fibers
 		// Push 1, 2, 4, 8 byte objects or references to ^
 		m_State.m_RSP -= 0x20;
 		pushq(reinterpret_cast<std::uintptr_t>(returnAddress));
-	}
+	}*/
 
-	template <class... Args>
+	/*template <class... Args>
 	void Fiber::pushSYSVAbi(void* returnAddress, Args&&... args)
 	{
 		pushq(reinterpret_cast<std::uintptr_t>(returnAddress));
-	}
+	}*/
 
-#if BUILD_IS_SYSTEM_WINDOWS
+	/*#if BUILD_IS_SYSTEM_WINDOWS
 	template <std::size_t Index, class Arg0, class... Args>
 	void Fiber::pushArgument(Arg0&& arg0, Args&&... args)
 	{
@@ -284,9 +313,9 @@ namespace Fibers
 				pushArgument<IntIndex + 1, FloatIndex, Args...>(std::forward<Args>(args)...);
 		}
 	}
-#endif
+#endif*/
 
-	template <class... Args>
+	/*template <class... Args>
 	void Fiber::pushArguments(Args&&... args)
 	{
 		if constexpr (sizeof...(Args) > 0)
@@ -298,9 +327,9 @@ namespace Fibers
 			pushArgument<0, 0, Args...>(std::forward<Args>(args)...);
 #endif
 		}
-	}
+	}*/
 
-#if BUILD_IS_SYSTEM_WINDOWS
+	/*#if BUILD_IS_SYSTEM_WINDOWS
 	template <std::size_t Index, class Arg0, class... Args>
 	void Fiber::destroyArgument()
 	{
@@ -427,9 +456,9 @@ namespace Fibers
 				pushArgument<IntIndex + 1, FloatIndex, Args...>();
 		}
 	}
-#endif
+#endif*/
 
-	template <class... Args>
+	/*template <class... Args>
 	void Fiber::destroyArguments()
 	{
 		if constexpr (sizeof...(Args) > 0)
@@ -440,14 +469,14 @@ namespace Fibers
 			destroyArgument<0, 0, Args...>();
 #endif
 		}
-	}
+	}*/
 
 	template <class Function, class... Args>
 	void Fiber::destroyEntry()
 	{
 		using ClassType = std::remove_reference_t<Function>;
 
-		destroyArguments<Args...>();
+		//destroyArguments<Args...>();
 		if constexpr (std::is_class_v<ClassType>)
 			reinterpret_cast<ClassType*>(m_State.m_RSP)->~Function();
 	}
