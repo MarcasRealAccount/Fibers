@@ -31,7 +31,7 @@ m.configProps = function(prj, cfg)
 		m.cppStandard,
 		m.pch,
 		m.prebuildCommands,
-		m.postbuildCommans,
+		m.postbuildCommands,
 		m.prelinkCommands,
 		m.customCommands,
 		m.nasmFlags
@@ -59,11 +59,11 @@ function m.nasmFlags(prj, cfg)
 	for _, udef in ipairs(cfg.undefines) do
 		flags = flags .. " \"-u" .. udef .. "\""
 	end
-	
+
 	if cfg.symbols == "On" then
 		flags = flags .. " -g"
 	end
-	
+
 	flags = flags .. " " .. m.nasmOptimizeFlags[cfg.optimize]
 	
 	p.push("set(CMAKE_ASM_NASM_FLAGS_%s", cmake.common.configName(cfg, #prj.workspace.platforms > 1):upper())

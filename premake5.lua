@@ -21,7 +21,7 @@ workspace("Fibers")
 	    location("Fibers/")
 	    warnings("Extra")
 		libs.fibers:setup()
-        common:addActions()
+		common:addActions()
 
 	project("Tests")
 		location("Tests/")
