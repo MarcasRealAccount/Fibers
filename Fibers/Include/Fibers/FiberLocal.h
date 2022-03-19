@@ -49,24 +49,73 @@ namespace Fibers
 			}
 		}
 
+		FiberLocal& operator=(const T& value)
+		{
+			auto fiber = GetCurrentFiber();
+			if (!fiber)
+				throw std::runtime_error("Not in fiber");
+
+			m_Mutex.lock_shared();
+			auto itr = m_Storage.find(fiber->getID());
+			if (itr == m_Storage.end())
+			{
+				m_Mutex.unlock_shared();
+				m_Mutex.lock();
+				auto res = m_Storage.insert({ fiber->getID(), value });
+				m_Mutex.unlock();
+				if (res.second)
+					fiber->addFiberLocal(this);
+				res.first->second = value;
+				return *this;
+			}
+			itr->second = value;
+			m_Mutex.unlock_shared();
+			return *this;
+		}
+
+		FiberLocal& operator=(T&& value)
+		{
+			auto fiber = GetCurrentFiber();
+			if (!fiber)
+				throw std::runtime_error("Not in fiber");
+
+			m_Mutex.lock_shared();
+			auto itr = m_Storage.find(fiber->getID());
+			if (itr == m_Storage.end())
+			{
+				m_Mutex.unlock_shared();
+				m_Mutex.lock();
+				auto res = m_Storage.insert({ fiber->getID(), std::move(value) });
+				m_Mutex.unlock();
+				if (res.second)
+					fiber->addFiberLocal(this);
+				res.first->second = std::move(value);
+				return *this;
+			}
+			itr->second = std::move(value);
+			m_Mutex.unlock_shared();
+			return *this;
+		}
+
 		operator T&()
 		{
 			auto fiber = GetCurrentFiber();
 			if (!fiber)
 				throw std::runtime_error("Not in fiber");
 
-			std::shared_lock lock(m_Mutex);
-
+			m_Mutex.lock_shared();
 			auto itr = m_Storage.find(fiber->getID());
 			if (itr == m_Storage.end())
 			{
-				std::unique_lock lock2(m_Mutex);
-
+				m_Mutex.unlock_shared();
+				m_Mutex.lock();
 				auto res = m_Storage.insert({ fiber->getID(), T {} });
+				m_Mutex.unlock();
 				if (res.second)
 					fiber->addFiberLocal(this);
 				return res.first->second;
 			}
+			m_Mutex.unlock_shared();
 			return itr->second;
 		}
 

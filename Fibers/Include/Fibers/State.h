@@ -19,6 +19,25 @@ namespace Fibers
 		void store(void* returnAddress = nullptr);
 		void restore(bool entry = false);
 
+		void pushb(std::uint8_t byte);
+		void pushw(std::uint16_t word);
+		void pushd(std::uint32_t dword);
+		void pushq(std::uint64_t qword);
+
+		std::uint8_t  popb();
+		std::uint16_t popw();
+		std::uint32_t popd();
+		std::uint64_t popq();
+
+		template <class T>
+		std::size_t requiredSize();
+		template <class T>
+		std::size_t push(T&& v);
+		template <class T>
+		std::size_t push(T&& v, std::size_t minimumAlignment);
+		template <class T>
+		T pop(std::size_t alignment = 0);
+
 	public:
 		ECallingConvention m_CallingConvention;
 
@@ -30,4 +49,62 @@ namespace Fibers
 	};
 
 	void storeAndRestore(RegisterState& storeState, void* returnAddress, RegisterState& restoreState, bool entry);
+} // namespace Fibers
+
+//----------------
+// Implementation
+//----------------
+
+namespace Fibers
+{
+	template <class T>
+	std::size_t RegisterState::requiredSize()
+	{
+		switch (m_CallingConvention)
+		{
+		case ECallingConvention::MSAbi: return (sizeof(T) + 7) / 8 * 8;
+		case ECallingConvention::SYSVAbi: return (sizeof(T) + 15) / 16 * 16;
+		}
+		return sizeof(T);
+	}
+
+	template <class T>
+	std::size_t RegisterState::push(T&& v)
+	{
+		std::size_t allocationSize = requiredSize<T>();
+
+		constexpr std::size_t alignment = alignof(T);
+		std::size_t           diff      = m_RSP;
+
+		m_RSP = (m_RSP - allocationSize) / alignment * alignment;
+		diff  = diff - m_RSP;
+
+		*reinterpret_cast<T*>(m_RSP) = std::forward<T>(v);
+		return allocationSize + diff;
+	}
+
+	template <class T>
+	std::size_t RegisterState::push(T&& v, std::size_t minimumAlignment)
+	{
+		std::size_t allocationSize = requiredSize<T>();
+
+		std::size_t alignment = std::max(minimumAlignment, alignof(T));
+		std::size_t diff      = m_RSP;
+
+		m_RSP = (m_RSP - allocationSize) / alignment * alignment;
+		diff  = diff - m_RSP;
+
+		*reinterpret_cast<T*>(m_RSP) = std::forward<T>(v);
+		return allocationSize + diff;
+	}
+
+	template <class T>
+	T RegisterState::pop(std::size_t alignment)
+	{
+		std::size_t allocationSize = requiredSize<T>();
+
+		T v = std::forward<T>(*reinterpret_cast<T*>(m_RSP));
+		m_RSP += allocationSize + alignment;
+		return v;
+	}
 } // namespace Fibers

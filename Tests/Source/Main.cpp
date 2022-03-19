@@ -1,29 +1,57 @@
 #include <Fibers/Fiber.h>
+#include <Fibers/FiberLocal.h>
 
 #include <iostream>
+
+struct Object
+{
+	~Object()
+	{
+		std::cout << "Woot woot\n";
+	}
+
+	std::uint64_t arr[1020] { 0 };
+
+	void operator()()
+	{
+		std::cout << "Extremely funky!!\n";
+	}
+};
+
+Fibers::FiberLocal<int> fiberLocal;
 
 int main(int argc, char** argv)
 {
 	Fibers::Fiber fiber {
 		Fibers::ECallingConvention::Native,
 		65536,
-		[]()
+		[](int a, float b, int c, float d, Object func)
 		{
+		    fiberLocal = c;
+
+		    std::cout << func.arr[0] << '\n';
+		    std::cout << a << ", " << b << ", " << c << ", " << fiberLocal << '\n';
 		    std::cout << "Nice\n";
+		    func();
 		    Fibers::Yield();
-		    std::cout << "Even nicer\n";
 
 		    Fibers::Fiber anotherFiber {
 			    Fibers::ECallingConvention::Native,
 			    65536,
 			    []()
 			    {
-			        std::cout << "Very cool\n";
+			        fiberLocal = 15;
+			        std::cout << fiberLocal << "Very cool\n";
 			    }
 		    };
 
 		    anotherFiber.resume();
-		}
+
+		    std::cout << a << ", " << b << ", " << c << ", " << fiberLocal << '\n';
+		    std::cout << "Even nicer\n";
+		    func();
+		},
+		1, 2.2f, 3, 4.4f, Object { 1 }
 	};
 
 	fiber.resume();
