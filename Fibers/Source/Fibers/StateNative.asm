@@ -11,6 +11,7 @@ GlobalLabel fibers_storerestore ; RCX => storeState, RDX => returnAddress, R8 =>
 	cmp rdx, 0h
 	jne .Store
 	mov rdx, [rsp]
+	add rsp, 8h
 
 	.Store:
 		lea rax, [.StoreJmpTable]
@@ -59,6 +60,7 @@ GlobalLabel fibers_storerestore ; RDI => storeState, RSI => returnAddress, RDX =
 	cmp rsi, 0h
 	jne .Store
 	mov rsi, [rsp]
+	add rsp, 8
 
 	.Store:
 		sub rsp, 8h

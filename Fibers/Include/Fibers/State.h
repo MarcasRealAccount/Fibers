@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CallingConvention.h"
+#include "Utils/Core.h"
 
 namespace Fibers
 {
