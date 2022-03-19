@@ -189,4 +189,4 @@ namespace Fibers::Utils
 	public:
 		ValueT m_Value;
 	};
-} // namespace Fibers::Utils
+} // namespace ModRGB::Utils

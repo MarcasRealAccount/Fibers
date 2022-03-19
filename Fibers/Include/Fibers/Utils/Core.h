@@ -152,4 +152,4 @@ namespace Fibers::Core
 	static constexpr bool               s_IsPlatformX86   = false;
 	static constexpr bool               s_IsPlatformAMD64 = false;
 #endif
-} // namespace Fibers::Core
+} // namespace ModRGB::Core

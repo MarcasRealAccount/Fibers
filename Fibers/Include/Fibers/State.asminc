@@ -1,0 +1,45 @@
+%ifndef FIBERS_STATE_ASMINC
+%define FIBERS_STATE_ASMINC
+
+%include "Fibers/Utils/Core.asminc"
+
+struc RegisterState
+	.m_CallingConvention: resd 2
+
+	.m_RAX: resq 1
+	.m_RBX: resq 1
+	.m_RCX: resq 1
+	.m_RDX: resq 1
+	.m_RDI: resq 1
+	.m_RSI: resq 1
+	.m_RBP: resq 1
+	.m_RSP: resq 1
+	.m_R8:  resq 1
+	.m_R9:  resq 1
+	.m_R10: resq 1
+	.m_R11: resq 1
+	.m_R12: resq 1
+	.m_R13: resq 1
+	.m_R14: resq 1
+	.m_R15: resq 1
+	.m_RIP: resq 1
+
+	.m_XMM0:  reso 1
+	.m_XMM1:  reso 1
+	.m_XMM2:  reso 1
+	.m_XMM3:  reso 1
+	.m_XMM4:  reso 1
+	.m_XMM5:  reso 1
+	.m_XMM6:  reso 1
+	.m_XMM7:  reso 1
+	.m_XMM8:  reso 1
+	.m_XMM9:  reso 1
+	.m_XMM10: reso 1
+	.m_XMM11: reso 1
+	.m_XMM12: reso 1
+	.m_XMM13: reso 1
+	.m_XMM14: reso 1
+	.m_XMM15: reso 1
+endstruc
+
+%endif
