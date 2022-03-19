@@ -20,7 +20,7 @@ struct Object
 
 Fibers::FiberLocal<int> fiberLocal;
 
-int main(int argc, char** argv)
+int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
 	Fibers::Fiber fiber {
 		Fibers::ECallingConvention::Native,
@@ -30,7 +30,7 @@ int main(int argc, char** argv)
 		    fiberLocal = c;
 
 		    std::cout << func.arr[0] << '\n';
-		    std::cout << a << ", " << b << ", " << c << ", " << fiberLocal << '\n';
+		    std::cout << a << ", " << b << ", " << fiberLocal << ", " << d << '\n';
 		    std::cout << "Nice\n";
 		    func();
 		    Fibers::Yield();
@@ -41,13 +41,13 @@ int main(int argc, char** argv)
 			    []()
 			    {
 			        fiberLocal = 15;
-			        std::cout << fiberLocal << "Very cool\n";
+			        std::cout << fiberLocal << " Very cool\n";
 			    }
 		    };
 
 		    anotherFiber.resume();
 
-		    std::cout << a << ", " << b << ", " << c << ", " << fiberLocal << '\n';
+		    std::cout << a << ", " << b << ", " << fiberLocal << ", " << d << '\n';
 		    std::cout << "Even nicer\n";
 		    func();
 		},

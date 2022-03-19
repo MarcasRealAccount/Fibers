@@ -35,27 +35,8 @@ default rel
 
 %define BUILD_IS_PLATFORM_AMD64 (BUILD_PLATFORM == BUILD_PLATFORM_AMD64)
 
-%if BUILD_IS_TOOLSET_MSVC
-%macro Label 1
-	%1
-%endmacro
-%macro GlobalLabel 1
-	extern %1
-	%1:
-%endmacro
-%macro GlobalLabel 2
-	extern %1
-	%1: %2
-%endmacro
-%macro LocalLabel 1
-	static %1
-	%1:
-%endmacro
-%macro LocalLabel 2
-	static %1
-	%1: %2
-%endmacro
-%else
+%if BUILD_IS_SYSTEM_MACOSX
+
 %macro Label 1
 	_%1
 %endmacro
@@ -75,6 +56,29 @@ default rel
 	static _%1
 	_%1: %2
 %endmacro
+
+%else 
+
+%macro Label 1
+	%1
+%endmacro
+%macro GlobalLabel 1
+	extern %1
+	%1:
+%endmacro
+%macro GlobalLabel 2
+	extern %1
+	%1: %2
+%endmacro
+%macro LocalLabel 1
+	static %1
+	%1:
+%endmacro
+%macro LocalLabel 2
+	static %1
+	%1: %2
+%endmacro
+
 %endif
 
 %endif

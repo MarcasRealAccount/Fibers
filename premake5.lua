@@ -4,6 +4,7 @@ require("Premake/Libs/Fibers")
 
 require("Premake/Module/cmake/cmake_project_ext")
 require("Premake/Module/vstudio/vs2010_vcxproj_ext")
+require("Premake/Module/gmake2/gmake2_cpp_ext")
 
 workspace("Fibers")
 	common:setConfigsAndPlatforms()

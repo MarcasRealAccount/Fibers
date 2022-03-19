@@ -8,8 +8,23 @@
 
 namespace Fibers
 {
+	template <class T>
+	std::size_t RequiredSize(ECallingConvention callingConvention);
+
+	template <class T>
+	std::size_t RequiredAlignedSize(ECallingConvention callingConvention, std::uintptr_t& rsp, std::uint64_t minAlignment = 0);
+
 	namespace MSAbi
 	{
+		template <class T, std::size_t I>
+		void RequiredStackSize(std::size_t& rsp)
+		{
+			if constexpr (sizeof(T) > 0)
+				RequiredAlignedSize<T>(ECallingConvention::MSAbi, rsp, 16);
+			else if constexpr (I >= 4)
+				RequiredAlignedSize<T>(ECallingConvention::MSAbi, rsp);
+		}
+
 		template <class T, std::size_t I>
 		void AddStackAddress(std::vector<std::uintptr_t>& arguments, RegisterState& state, T&& v)
 		{
@@ -95,6 +110,13 @@ namespace Fibers
 		template <class... Ts, std::size_t... Is>
 		void PushArguments(RegisterState& state, std::vector<std::uintptr_t>& arguments, std::uintptr_t returnAddress, Ts&&... vs, const std::index_sequence<Is...>&)
 		{
+			std::size_t rsp = state.m_RSP;
+			(RequiredStackSize<Ts, Is>(rsp), ...);
+
+			std::size_t size        = state.m_RSP - rsp;
+			std::size_t alignedSize = (size + 15) / 16 * 16;
+			state.m_RSP -= alignedSize - size;
+
 			arguments.resize(sizeof...(Ts) + 1);
 			arguments[0] = state.m_RSP;
 			if constexpr (sizeof...(Ts) > 0)
@@ -145,11 +167,35 @@ namespace Fibers
 		}
 	} // namespace SYSVAbi
 
+	template <class T>
+	std::size_t RequiredSize(ECallingConvention callingConvention)
+	{
+		switch (callingConvention)
+		{
+		case ECallingConvention::Native: [[fallthrough]];
+		case ECallingConvention::MSAbi: return (sizeof(T) + 7) / 8 * 8;
+		case ECallingConvention::SYSVAbi: return (sizeof(T) + 15) / 16 * 16;
+		}
+		return sizeof(T);
+	}
+
+	template <class T>
+	std::size_t RequiredAlignedSize(ECallingConvention callingConvention, std::uintptr_t& rsp, std::uint64_t minAlignment)
+	{
+		std::size_t allocationSize = RequiredSize<T>(callingConvention);
+		std::size_t alignment      = std::max(minAlignment, alignof(T));
+		std::size_t diff           = rsp;
+		rsp                        = (rsp - allocationSize) / alignment * alignment;
+		diff -= rsp;
+		return allocationSize + diff;
+	}
+
 	template <class... Ts>
 	void PushArguments(ECallingConvention callingConvention, RegisterState& state, std::vector<std::uintptr_t>& arguments, std::uintptr_t returnAddress, Ts&&... vs)
 	{
 		switch (callingConvention)
 		{
+		case ECallingConvention::Native: [[fallthrough]];
 		case ECallingConvention::MSAbi:
 			MSAbi::PushArguments<Ts...>(state, arguments, returnAddress, std::forward<Ts>(vs)..., std::make_index_sequence<sizeof...(Ts)>());
 			break;
@@ -164,6 +210,7 @@ namespace Fibers
 	{
 		switch (callingConvention)
 		{
+		case ECallingConvention::Native: [[fallthrough]];
 		case ECallingConvention::MSAbi:
 			MSAbi::DestroyArguments<Ts...>(state, arguments, std::make_index_sequence<sizeof...(Ts)>());
 			break;

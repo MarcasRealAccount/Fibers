@@ -7,6 +7,7 @@ namespace Fibers
 	{
 		switch (callingConvention)
 		{
+		case ECallingConvention::Native: [[fallthrough]];
 		case ECallingConvention::MSAbi: [[fallthrough]];
 		case ECallingConvention::SYSVAbi:
 			m_Size = (size + 15) / 16 * 16;
@@ -36,6 +37,7 @@ namespace Fibers
 	{
 		switch (m_CallingConvention)
 		{
+		case ECallingConvention::Native: [[fallthrough]];
 		case ECallingConvention::MSAbi: [[fallthrough]];
 		case ECallingConvention::SYSVAbi:
 			if (m_Data)

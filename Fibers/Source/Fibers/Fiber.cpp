@@ -133,7 +133,7 @@ namespace Fibers
 		if (m_Entry)
 			m_Entry = false;
 		m_Inside = true;
-		storeAndRestore(m_ReturnState, nullptr, m_State, entry);
+		StoreAndRestore(m_ReturnState, nullptr, m_State, entry);
 	}
 
 	void Fiber::exit()
@@ -161,7 +161,7 @@ namespace Fibers
 
 		s_FiberStack.pop_back();
 		m_Inside = false;
-		storeAndRestore(m_State, nullptr, m_ReturnState, false);
+		StoreAndRestore(m_State, nullptr, m_ReturnState, false);
 	}
 
 	void Fiber::addFiberLocal(struct FiberLocalBase* fiberLocal)

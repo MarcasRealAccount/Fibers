@@ -30,8 +30,6 @@ namespace Fibers
 		std::uint64_t popq();
 
 		template <class T>
-		std::size_t requiredSize();
-		template <class T>
 		std::size_t push(T&& v);
 		template <class T>
 		std::size_t push(T&& v, std::size_t minimumAlignment);
@@ -48,30 +46,21 @@ namespace Fibers
 		XMM m_XMM0, m_XMM1, m_XMM2, m_XMM3, m_XMM4, m_XMM5, m_XMM6, m_XMM7, m_XMM8, m_XMM9, m_XMM10, m_XMM11, m_XMM12, m_XMM13, m_XMM14, m_XMM15;
 	};
 
-	void storeAndRestore(RegisterState& storeState, void* returnAddress, RegisterState& restoreState, bool entry);
+	void StoreAndRestore(RegisterState& storeState, void* returnAddress, RegisterState& restoreState, bool entry);
 } // namespace Fibers
 
 //----------------
 // Implementation
 //----------------
 
+#include "CallingConventions.h"
+
 namespace Fibers
 {
 	template <class T>
-	std::size_t RegisterState::requiredSize()
-	{
-		switch (m_CallingConvention)
-		{
-		case ECallingConvention::MSAbi: return (sizeof(T) + 7) / 8 * 8;
-		case ECallingConvention::SYSVAbi: return (sizeof(T) + 15) / 16 * 16;
-		}
-		return sizeof(T);
-	}
-
-	template <class T>
 	std::size_t RegisterState::push(T&& v)
 	{
-		std::size_t allocationSize = requiredSize<T>();
+		std::size_t allocationSize = RequiredSize<T>(m_CallingConvention);
 
 		constexpr std::size_t alignment = alignof(T);
 		std::size_t           diff      = m_RSP;
@@ -86,13 +75,13 @@ namespace Fibers
 	template <class T>
 	std::size_t RegisterState::push(T&& v, std::size_t minimumAlignment)
 	{
-		std::size_t allocationSize = requiredSize<T>();
+		std::size_t allocationSize = RequiredSize<T>(m_CallingConvention);
 
 		std::size_t alignment = std::max(minimumAlignment, alignof(T));
 		std::size_t diff      = m_RSP;
 
 		m_RSP = (m_RSP - allocationSize) / alignment * alignment;
-		diff  = diff - m_RSP;
+		diff -= m_RSP;
 
 		*reinterpret_cast<T*>(m_RSP) = std::forward<T>(v);
 		return allocationSize + diff;
@@ -101,7 +90,7 @@ namespace Fibers
 	template <class T>
 	T RegisterState::pop(std::size_t alignment)
 	{
-		std::size_t allocationSize = requiredSize<T>();
+		std::size_t allocationSize = RequiredSize<T>(m_CallingConvention);
 
 		T v = std::forward<T>(*reinterpret_cast<T*>(m_RSP));
 		m_RSP += allocationSize + alignment;

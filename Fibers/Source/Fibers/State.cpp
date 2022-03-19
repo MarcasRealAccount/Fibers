@@ -21,6 +21,7 @@ namespace Fibers
 	{
 		switch (m_CallingConvention)
 		{
+		case ECallingConvention::Native: [[fallthrough]];
 		case ECallingConvention::MSAbi:
 			fibers_msabi_store(*this, returnAddress);
 			break;
@@ -34,6 +35,7 @@ namespace Fibers
 	{
 		switch (m_CallingConvention)
 		{
+		case ECallingConvention::Native: [[fallthrough]];
 		case ECallingConvention::MSAbi:
 			fibers_msabi_restore(*this, entry);
 			break;
@@ -95,7 +97,7 @@ namespace Fibers
 		return val;
 	}
 
-	void storeAndRestore(RegisterState& storeState, void* returnAddress, RegisterState& restoreState, bool entry)
+	void StoreAndRestore(RegisterState& storeState, void* returnAddress, RegisterState& restoreState, bool entry)
 	{
 		fibers_storerestore(storeState, returnAddress, restoreState, entry);
 	}
