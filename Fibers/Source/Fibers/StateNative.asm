@@ -5,7 +5,7 @@ extern fibers_msabi_restore
 extern fibers_sysvabi_store
 extern fibers_sysvabi_restore
 
-%ifdef BUILD_IS_SYSTEM_WINDOWS
+%if BUILD_IS_SYSTEM_WINDOWS
 
 GlobalLabel fibers_storerestore ; RCX => storeState, RDX => returnAddress, R8 => restoreState, R9 => entry
 	cmp rdx, 0h
@@ -63,7 +63,6 @@ GlobalLabel fibers_storerestore ; RDI => storeState, RSI => returnAddress, RDX =
 	add rsp, 8
 
 	.Store:
-		sub rsp, 8h
 		lea r10, [.StoreJmpTable]
 		mov eax, [rdi + RegisterState.m_CallingConvention]
 		mov rax, [r10 + rax * 8]

@@ -1,6 +1,6 @@
 %include "Fibers/State.asminc"
 
-%ifdef BUILD_IS_SYSTEM_WINDOWS
+%if BUILD_IS_SYSTEM_WINDOWS
 
 GlobalLabel fibers_msabi_store ; RCX => state, RDX => returnAddress
 	mov [rcx + RegisterState.m_RBX], rbx

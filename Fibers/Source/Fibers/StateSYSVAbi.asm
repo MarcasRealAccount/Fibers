@@ -1,6 +1,6 @@
 %include "Fibers/State.asminc"
 
-%ifdef BUILD_IS_SYSTEM_WINDOWS
+%if BUILD_IS_SYSTEM_WINDOWS
 
 GlobalLabel fibers_sysvabi_store ; RCX => state, RDX => returnAddress
 	mov rdi, rcx
@@ -83,7 +83,7 @@ GlobalLabel fibers_sysvabi_store ; RDI => state, RSI => returnAddress
 
 	.OrigRIPStore:
 		mov rax, [rsp]
-		mov [rdi + Registers.m_RIP], rax
+		mov [rdi + RegisterState.m_RIP], rax
 
 	.Exit:
 		ret
@@ -103,21 +103,21 @@ GlobalLabel fibers_sysvabi_restore ; RDI => state, RSI => entry
 	cmp rsi, 0h
 	je .Exit
 
-	vmovapd xmm0, [rsi + RegisterState.m_XMM0]
-	vmovapd xmm1, [rsi + RegisterState.m_XMM1]
-	vmovapd xmm2, [rsi + RegisterState.m_XMM2]
-	vmovapd xmm3, [rsi + RegisterState.m_XMM3]
-	vmovapd xmm4, [rsi + RegisterState.m_XMM4]
-	vmovapd xmm5, [rsi + RegisterState.m_XMM5]
-	vmovapd xmm6, [rsi + RegisterState.m_XMM6]
-	vmovapd xmm7, [rsi + RegisterState.m_XMM7]
+	vmovapd xmm0, [rdi + RegisterState.m_XMM0]
+	vmovapd xmm1, [rdi + RegisterState.m_XMM1]
+	vmovapd xmm2, [rdi + RegisterState.m_XMM2]
+	vmovapd xmm3, [rdi + RegisterState.m_XMM3]
+	vmovapd xmm4, [rdi + RegisterState.m_XMM4]
+	vmovapd xmm5, [rdi + RegisterState.m_XMM5]
+	vmovapd xmm6, [rdi + RegisterState.m_XMM6]
+	vmovapd xmm7, [rdi + RegisterState.m_XMM7]
 
-	mov rdi, [rsi + RegisterState.m_RDI]
-	mov rdx, [rsi + RegisterState.m_RDX]
-	mov rcx, [rsi + RegisterState.m_RCX]
-	mov r8,  [rsi + RegisterState.m_R8]
-	mov r9,  [rsi + RegisterState.m_R9]
-	mov rsi, [rsi + RegisterState.m_RSI]
+	mov rsi, [rdi + RegisterState.m_RSI]
+	mov rdx, [rdi + RegisterState.m_RDX]
+	mov rcx, [rdi + RegisterState.m_RCX]
+	mov r8,  [rdi + RegisterState.m_R8]
+	mov r9,  [rdi + RegisterState.m_R9]
+	mov rdi, [rdi + RegisterState.m_RDI]
 
 	.Exit:
 		ret
