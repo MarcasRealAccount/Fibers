@@ -107,13 +107,14 @@ namespace Fibers
 			std::size_t rsp = state.m_RSP;
 			(RequiredStackAddressSize<Ts, Is>(rsp), ...);
 			(RequiredStackSize<Ts, Is>(rsp), ...);
-			std::size_t size        = state.m_RSP - rsp;
-			std::size_t alignedSize = (size + 15) / 16 * 16;
-			state.m_RSP -= alignedSize - size;
+			std::size_t size = state.m_RSP - rsp;
+			rsp &= ~15ULL;
+			std::size_t alignedSize = state.m_RSP - rsp;
 
 			if constexpr (sizeof...(Ts) > 0)
 			{
 				(AddStackAddress<Ts, Is>(arguments, state, std::forward<Ts>(vs)), ...);
+				state.m_RSP -= alignedSize - size;
 
 				PushArgument<0, Ts...>(arguments, state, std::forward<Ts>(vs)...);
 			}
@@ -304,13 +305,14 @@ namespace Fibers
 			std::size_t rsp = state.m_RSP;
 			(RequiredStackAddressSize<Ts>(rsp), ...);
 			RequiredStackSize<0, 0, Ts...>(rsp);
-			std::size_t size        = state.m_RSP - rsp;
-			std::size_t alignedSize = (size + 15) / 16 * 16;
-			state.m_RSP -= alignedSize - size;
+			std::size_t size = state.m_RSP - rsp;
+			rsp &= ~15ULL;
+			std::size_t alignedSize = state.m_RSP - rsp;
 
 			if constexpr (sizeof...(Ts) > 0)
 			{
 				(AddStackAddress<Ts, Is>(arguments, state, std::forward<Ts>(vs)), ...);
+				state.m_RSP -= alignedSize - size;
 
 				PushArgument<0, 0, 0, Ts...>(state, arguments, std::forward<Ts>(vs)...);
 			}

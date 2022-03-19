@@ -25,12 +25,12 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 	Fibers::Fiber fiber {
 		Fibers::ECallingConvention::Native,
 		65536,
-		[](int a, float b, int c, float d, Object func)
+		[](int a, float b, int c, float d, Object func, int e, int f, int g, int h, int i)
 		{
 		    fiberLocal = c;
 
 		    std::cout << func.arr[0] << '\n';
-		    std::cout << a << ", " << b << ", " << fiberLocal << ", " << d << '\n';
+		    std::cout << a << ", " << b << ", " << fiberLocal << ", " << d << ", " << e << ", " << f << ", " << g << ", " << h << ", " << i << '\n';
 		    std::cout << "Nice\n";
 		    func();
 		    Fibers::Yield();
@@ -47,11 +47,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
 		    anotherFiber.resume();
 
-		    std::cout << a << ", " << b << ", " << fiberLocal << ", " << d << '\n';
+		    std::cout << a << ", " << b << ", " << fiberLocal << ", " << d << ", " << e << ", " << f << ", " << g << ", " << h << ", " << i << '\n';
 		    std::cout << "Even nicer\n";
 		    func();
 		},
-		1, 2.2f, 3, 4.4f, Object { 1 }
+		1, 2.2f, 3, 4.4f, Object { 1 }, 6, 7, 8, 9, 10
 	};
 
 	fiber.resume();
