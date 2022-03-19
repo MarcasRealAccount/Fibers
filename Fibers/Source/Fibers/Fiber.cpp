@@ -148,10 +148,11 @@ namespace Fibers
 			m_Finished = true;
 			m_State.store();
 		}
-		if (m_FunctionDestructor)
-			m_FunctionDestructor(*this);
+		m_State.m_RSP = m_ArgumentStart;
 		if (m_ArgumentDestructor)
 			m_ArgumentDestructor(*this);
+		if (m_FunctionDestructor)
+			m_FunctionDestructor(*this);
 		m_ReturnState.restore();
 	}
 

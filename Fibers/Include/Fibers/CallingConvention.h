@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 
 namespace Fibers
@@ -12,4 +13,4 @@ namespace Fibers
 	};
 
 	ECallingConvention CorrectCallingConvention(ECallingConvention callingConvention);
-}
+} // namespace Fibers

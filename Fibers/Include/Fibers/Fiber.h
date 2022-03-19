@@ -66,10 +66,6 @@ namespace Fibers
 
 		template <class... Ts>
 		void pushArguments(std::uintptr_t returnAddress, Ts&&... vs);
-		template <class... Ts>
-		void pushMSAbiArguments(Ts&&... vs);
-		template <class... Ts>
-		void pushSYSVAbiArguments(Ts&&... vs);
 
 		template <class Function>
 		void destroyFunction();
@@ -88,12 +84,22 @@ namespace Fibers
 
 		RegisterState m_State;
 		RegisterState m_ReturnState;
+		std::uint64_t m_ArgumentStart;
 
 		std::uint64_t m_ID;
 
 		void (*m_FunctionDestructor)(Fiber&);
 		void (*m_ArgumentDestructor)(Fiber&);
 	};
+} // namespace Fibers
+
+#include "CallingConventions.h"
+
+namespace Fibers
+{
+	//----------------
+	// Implementation
+	//----------------
 
 	template <Callable Function, class... Ts>
 	Fiber::Fiber(ECallingConvention callingConvention, std::size_t stackSize, Function&& function, Ts&&... vs)
@@ -119,6 +125,7 @@ namespace Fibers
 			m_State.m_RIP        = Utils::UBCast<std::uintptr_t>(function);
 		}
 		pushArguments<Ts...>(reinterpret_cast<std::uintptr_t>(&ExitFiber), std::forward<Ts>(vs)...);
+		m_ArgumentStart      = m_State.m_RSP;
 		m_ArgumentDestructor = Utils::UBCast<decltype(m_ArgumentDestructor)>(&Fiber::destroyArguments<Ts...>);
 	}
 
@@ -161,52 +168,19 @@ namespace Fibers
 	template <class... Ts>
 	void Fiber::pushArguments(std::uintptr_t returnAddress, Ts&&... vs)
 	{
-		switch (m_CallingConvention)
-		{
-		case ECallingConvention::MSAbi:
-			pushMSAbiArguments<Ts...>(std::forward<Ts>(vs)...);
-			pushq(returnAddress);
-			break;
-		case ECallingConvention::SYSVAbi:
-			pushSYSVAbiArguments<Ts...>(std::forward<Ts>(vs)...);
-			pushq(returnAddress);
-			break;
-		}
-	}
-
-	template <class... Ts>
-	void Fiber::pushMSAbiArguments(Ts&&... vs)
-	{
-		m_State.m_RSP -= 40;
-	}
-
-	template <class... Ts>
-	void Fiber::pushSYSVAbiArguments(Ts&&... vs)
-	{
-		m_State.m_RSP -= 8;
+		PushArguments<Ts...>(m_CallingConvention, m_State, returnAddress, std::forward<Ts>(vs)...);
 	}
 
 	template <class Function>
 	void Fiber::destroyFunction()
 	{
 		using ClassType = std::remove_reference_t<Function>;
-
-		auto        top            = m_Stack.getTop();
-		std::size_t allocationSize = 0;
-		switch (m_CallingConvention)
-		{
-		case ECallingConvention::MSAbi:
-			allocationSize = (sizeof(ClassType) + 7) / 8 * 8;
-			break;
-		case ECallingConvention::SYSVAbi:
-			allocationSize = (sizeof(ClassType) + 15) / 16 * 16;
-			break;
-		}
-		reinterpret_cast<ClassType*>(top - allocationSize)->~Function();
+		reinterpret_cast<ClassType*>(m_State.m_RSP)->~ClassType();
 	}
 
 	template <class... Ts>
 	void Fiber::destroyArguments()
 	{
+		DestroyArguments<Ts...>(m_CallingConvention, m_State);
 	}
 } // namespace Fibers
