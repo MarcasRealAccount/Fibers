@@ -47,6 +47,15 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
 		    anotherFiber.resume();
 
+		    int j = 0;
+		    Fibers::Yield(
+		        [&j]()
+		        {
+			        std::cout << j << '\n';
+			        ++j;
+			        return j < 2;
+		        });
+
 		    std::cout << a << ", " << b << ", " << fiberLocal << ", " << d << ", " << e << ", " << f << ", " << g << ", " << h << ", " << i << '\n';
 		    std::cout << "Even nicer\n";
 		    func();
@@ -56,6 +65,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
 	fiber.resume();
 	std::cout << "Ok\n";
+	fiber.resume();
 	fiber.resume();
 	fiber.resume();
 	std::cout << "Godlike\n";

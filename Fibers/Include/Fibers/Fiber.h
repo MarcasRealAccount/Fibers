@@ -15,6 +15,18 @@ namespace Fibers
 	void Yield();
 	void ExitFiber();
 
+	template <class Function, class... Ts>
+	concept ConditionalFunction = requires(Function&& function, Ts&&... vs)
+	{
+		{
+			function(std::forward<Ts>(vs)...)
+			} -> std::convertible_to<bool>;
+	};
+
+	template <class Function>
+	requires ConditionalFunction<Function>
+	void Yield(Function&& function);
+
 	template <class T, class... Args>
 	concept Callable = requires(T&& t, Args&&... args)
 	{
@@ -89,6 +101,14 @@ namespace Fibers
 	//----------------
 	// Implementation
 	//----------------
+
+	template <class Function>
+	requires ConditionalFunction<Function>
+	void Yield(Function&& function)
+	{
+		while (function())
+			Yield();
+	}
 
 	template <class Function, class... Ts>
 	requires Callable<Function, Ts...>
