@@ -187,22 +187,26 @@ namespace Fibers
 		void RequiredStackSize(std::size_t& rsp)
 		{
 			constexpr std::size_t SSEInc     = std::is_floating_point_v<T> && SSE < 8 ? 1 : 0;
-			constexpr std::size_t IntegerInc = SSEInc == 0 ? (std::is_integral_v<T> || std::is_pointer_v<T>) &&Integer < 6 ? 1 : sizeof(T) < 16 && (sizeof(T) + 7) / 8 < Integer ? (sizeof(T) + 7) / 8 :
-                                                                                                                                                                                   0 :
+			constexpr std::size_t IntegerInc = SSEInc == 0 ? (std::is_integral_v<T> || std::is_pointer_v<T> || !std::is_trivially_copyable_v<T> || !std::is_trivially_destructible_v<T>) &&Integer < 6 ? 1 : sizeof(T) < 16 && (sizeof(T) + 7) / 8 < 6 - Integer ? (sizeof(T) + 7) / 8 :
+                                                                                                                                                                                                                                                                   0 :
                                                              0;
+
+			if constexpr (sizeof...(Ts) > 0)
+				RequiredStackSize<Integer + IntegerInc, SSE + SSEInc, Ts...>(rsp);
 
 			if constexpr (!std::is_trivially_copyable_v<T> || !std::is_trivially_destructible_v<T>)
 			{
 				if constexpr (Integer >= 6)
 					RequiredAlignedSize<std::uintptr_t>(ECallingConvention::SYSVAbi, rsp);
 			}
-			else if constexpr (sizeof(T) > 16 || (sizeof(T) < 16 && (6 - Integer) < sizeof(T) / 8))
+			else if constexpr (sizeof(T) > 16 || (sizeof(T) < 16 && sizeof(T) / 8 > 6 - Integer))
 			{
 				RequiredAlignedSize<T>(ECallingConvention::SYSVAbi, rsp);
 			}
-
-			if constexpr (sizeof...(Ts) > 0)
-				RequiredStackSize<Integer + IntegerInc, SSE + SSEInc, Ts...>(rsp);
+			else if constexpr (Integer >= 6 || SSE >= 8)
+			{
+				RequiredAlignedSize<T>(ECallingConvention::SYSVAbi, rsp);
+			}
 		}
 
 		template <class T, std::size_t I>
@@ -219,9 +223,13 @@ namespace Fibers
 		void PushArgument(RegisterState& state, std::vector<std::uintptr_t>& arguments, T&& v, Ts&&... vs)
 		{
 			constexpr std::size_t SSEInc     = std::is_floating_point_v<T> && SSE < 8 ? 1 : 0;
-			constexpr std::size_t IntegerInc = SSEInc == 0 ? (std::is_integral_v<T> || std::is_pointer_v<T> || !std::is_trivially_copyable_v<T> || !std::is_trivially_destructible_v<T>) &&Integer < 6 ? 1 : sizeof(T) < 16 && (sizeof(T) + 7) / 8 < Integer ? (sizeof(T) + 7) / 8 :
-                                                                                                                                                                                                                                                               0 :
+			constexpr std::size_t IntegerInc = SSEInc == 0 ? (std::is_integral_v<T> || std::is_pointer_v<T> || !std::is_trivially_copyable_v<T> || !std::is_trivially_destructible_v<T>) &&Integer < 6 ? 1 : sizeof(T) < 16 && (sizeof(T) + 7) / 8 < 6 - Integer ? (sizeof(T) + 7) / 8 :
+                                                                                                                                                                                                                                                                   0 :
                                                              0;
+
+			if constexpr (sizeof...(Ts) > 0)
+				PushArgument<Integer + IntegerInc, SSE + SSEInc, I + 1, Ts...>(state, arguments, std::forward<Ts>(vs)...);
+
 			if (arguments[I + 1])
 			{
 				if constexpr (Integer == 0)
@@ -241,7 +249,7 @@ namespace Fibers
 			}
 			else
 			{
-				if constexpr (sizeof(T) > 16 || (sizeof(T) < 16 && (6 - Integer) < sizeof(T) / 8))
+				if constexpr (sizeof(T) > 16 || (sizeof(T) < 16 && sizeof(T) / 8 > 6 - Integer))
 				{
 					state.push<T>(std::forward<T>(v));
 					arguments[I + 1] = state.m_RSP;
@@ -280,7 +288,7 @@ namespace Fibers
 					else if constexpr (SSE == 7)
 						*reinterpret_cast<T*>(&state.m_XMM7) = std::forward<T>(v);
 				}
-				else if constexpr (sizeof(T) < 16 && (sizeof(T) + 7) / 8 < Integer)
+				else if constexpr (sizeof(T) < 16 && (sizeof(T) + 7) / 8 < 6 - Integer)
 				{
 					constexpr std::size_t Regs = (sizeof(T) + 7) / 8;
 
@@ -328,9 +336,6 @@ namespace Fibers
 					arguments[I + 1] = state.m_RSP;
 				}
 			}
-
-			if constexpr (sizeof...(Ts) > 0)
-				PushArgument<Integer + IntegerInc, SSE + SSEInc, I + 1, Ts...>(state, arguments, std::forward<Ts>(vs)...);
 		}
 
 		template <class... Ts, std::size_t... Is>
@@ -339,16 +344,16 @@ namespace Fibers
 			arguments.resize(sizeof...(Ts) + 1);
 			arguments[0] = state.m_RSP;
 
-			std::size_t rsp = state.m_RSP;
-			(RequiredStackAddressSize<Ts>(rsp), ...);
-			RequiredStackSize<0, 0, Ts...>(rsp);
-			std::size_t size = state.m_RSP - rsp;
-			rsp &= ~15ULL;
-			std::size_t alignedSize = state.m_RSP - rsp;
-
 			if constexpr (sizeof...(Ts) > 0)
 			{
 				(AddStackAddress<Ts, Is>(arguments, state, std::forward<Ts>(vs)), ...);
+				state.m_RSP &= ~15ULL;
+
+				std::size_t rsp = state.m_RSP;
+				RequiredStackSize<0, 0, Ts...>(rsp);
+				std::size_t size = state.m_RSP - rsp;
+				rsp &= ~15ULL;
+				std::size_t alignedSize = state.m_RSP - rsp;
 				state.m_RSP -= alignedSize - size;
 
 				PushArgument<0, 0, 0, Ts...>(state, arguments, std::forward<Ts>(vs)...);
