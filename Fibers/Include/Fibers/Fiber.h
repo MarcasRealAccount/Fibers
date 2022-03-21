@@ -54,6 +54,8 @@ namespace Fibers
 		explicit operator bool() const { return !m_Finished; }
 
 	private:
+		template <class... Ts>
+		void destroyArguments();
 		template <class Function>
 		void destroyFunction();
 
@@ -75,6 +77,7 @@ namespace Fibers
 
 		std::uint64_t m_ID;
 
+		void (*m_ArgumentDestructor)(Fiber&);
 		void (*m_FunctionDestructor)(Fiber&);
 	};
 } // namespace Fibers
@@ -107,15 +110,23 @@ namespace Fibers
 			ClassType* newF      = reinterpret_cast<ClassType*>(m_State.m_RSP);
 			m_FunctionDestructor = Utils::UBCast<decltype(m_FunctionDestructor)>(&Fiber::destroyFunction<Function>);
 			PushArguments<ClassType*, Ts...>(m_CallingConvention, m_State, m_Arguments, reinterpret_cast<std::uintptr_t>(&ExitFiber), std::forward<ClassType*>(newF), std::forward<Ts>(vs)...);
-			m_State.m_RIP = Utils::UBCast<std::uintptr_t>(&ClassType::operator());
+			m_ArgumentDestructor = Utils::UBCast<decltype(m_ArgumentDestructor)>(&Fiber::destroyArguments<std::uintptr_t, Ts...>);
+			m_State.m_RIP        = Utils::UBCast<std::uintptr_t>(&ClassType::operator());
 		}
 		else
 		{
 			m_FunctionDestructor = nullptr;
 			PushArguments<Ts...>(m_CallingConvention, m_State, m_Arguments, reinterpret_cast<std::uintptr_t>(&ExitFiber), std::forward<Ts>(vs)...);
-			m_State.m_RIP = Utils::UBCast<std::uintptr_t>(function);
+			m_ArgumentDestructor = Utils::UBCast<decltype(m_ArgumentDestructor)>(&Fiber::destroyArguments<Ts...>);
+			m_State.m_RIP        = Utils::UBCast<std::uintptr_t>(function);
 		}
 		m_ArgumentStart = m_State.m_RSP;
+	}
+
+	template <class... Ts>
+	void Fiber::destroyArguments()
+	{
+		DestroyArguments<Ts...>(m_CallingConvention, m_State, m_Arguments);
 	}
 
 	template <class Function>

@@ -69,7 +69,7 @@ namespace Fibers
 	}
 
 	Fiber::Fiber(ECallingConvention callingConvention, std::size_t stackSize)
-	    : m_CallingConvention(CorrectCallingConvention(callingConvention)), m_Stack(m_CallingConvention, stackSize), m_Entry(true), m_Finished(false), m_Inside(false), m_State(m_CallingConvention), m_ReturnState(ECallingConvention::Native), m_ArgumentStart(0), m_ID(NewFiberID()), m_FunctionDestructor(nullptr)
+	    : m_CallingConvention(CorrectCallingConvention(callingConvention)), m_Stack(m_CallingConvention, stackSize), m_Entry(true), m_Finished(false), m_Inside(false), m_State(m_CallingConvention), m_ReturnState(ECallingConvention::Native), m_ArgumentStart(0), m_ID(NewFiberID()), m_ArgumentDestructor(nullptr), m_FunctionDestructor(nullptr)
 	{
 		AddFiber(this);
 		auto stackTop = reinterpret_cast<std::uintptr_t>(m_Stack.getTop());
@@ -78,7 +78,7 @@ namespace Fibers
 	}
 
 	Fiber::Fiber(Fiber&& move) noexcept
-	    : m_CallingConvention(move.m_CallingConvention), m_Stack(std::move(move.m_Stack)), m_Entry(move.m_Entry), m_Finished(move.m_Finished), m_Inside(move.m_Inside), m_FiberLocals(std::move(move.m_FiberLocals)), m_State(move.m_State), m_ReturnState(move.m_ReturnState), m_ArgumentStart(move.m_ArgumentStart), m_ID(move.m_ID), m_FunctionDestructor(move.m_FunctionDestructor)
+	    : m_CallingConvention(move.m_CallingConvention), m_Stack(std::move(move.m_Stack)), m_Entry(move.m_Entry), m_Finished(move.m_Finished), m_Inside(move.m_Inside), m_FiberLocals(std::move(move.m_FiberLocals)), m_State(move.m_State), m_ReturnState(move.m_ReturnState), m_ArgumentStart(move.m_ArgumentStart), m_ID(move.m_ID), m_ArgumentDestructor(move.m_ArgumentDestructor), m_FunctionDestructor(move.m_FunctionDestructor)
 	{
 		RemoveFiber(&move);
 		AddFiber(this);
@@ -86,6 +86,7 @@ namespace Fibers
 		move.m_ReturnState        = { ECallingConvention::Native };
 		move.m_ArgumentStart      = 0ULL;
 		move.m_ID                 = 0ULL;
+		move.m_ArgumentDestructor = nullptr;
 		move.m_FunctionDestructor = nullptr;
 	}
 
@@ -101,6 +102,7 @@ namespace Fibers
 		m_ReturnState        = move.m_ReturnState;
 		m_ArgumentStart      = move.m_ArgumentStart;
 		m_ID                 = move.m_ID;
+		m_ArgumentDestructor = move.m_ArgumentDestructor;
 		m_FunctionDestructor = move.m_FunctionDestructor;
 		RemoveFiber(&move);
 		AddFiber(this);
@@ -108,6 +110,7 @@ namespace Fibers
 		move.m_ReturnState        = { ECallingConvention::Native };
 		move.m_ArgumentStart      = 0ULL;
 		move.m_ID                 = 0ULL;
+		move.m_ArgumentDestructor = nullptr;
 		move.m_FunctionDestructor = nullptr;
 		return *this;
 	}
@@ -149,6 +152,8 @@ namespace Fibers
 			m_State.store();
 		}
 		m_State.m_RSP = m_ArgumentStart;
+		if (m_ArgumentDestructor)
+			m_ArgumentDestructor(*this);
 		if (m_FunctionDestructor)
 			m_FunctionDestructor(*this);
 		m_ReturnState.restore();

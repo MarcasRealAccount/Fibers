@@ -157,25 +157,47 @@ namespace Fibers
 			state.pushq(returnAddress);
 		}
 
-		template <class T, std::size_t I>
-		void DestroyArgument([[maybe_unused]] RegisterState& state, const std::vector<std::uintptr_t>& arguments)
-		{
-			using TI = std::remove_reference_t<std::remove_pointer_t<T>>;
-
-			if (arguments[I + 1])
-				reinterpret_cast<TI*>(arguments[I + 1])->~TI();
-		}
-
 		template <class... Ts, std::size_t... Is>
 		void DestroyArguments(RegisterState& state, const std::vector<std::uintptr_t>& arguments, const std::index_sequence<Is...>&)
 		{
-			(DestroyArgument<Ts, Is>(state, arguments), ...);
 			state.m_RSP = arguments[0];
 		}
 	} // namespace MSAbi
 
 	namespace SYSVAbi
 	{
+		template <std::size_t Integer, std::size_t SSE, class T>
+		constexpr std::size_t GetSSECount()
+		{
+			if constexpr (SSE < 8 && std::is_floating_point_v<T>)
+				return 1;
+			else
+				return 0;
+		}
+
+		template <std::size_t Integer, std::size_t SSE, class T>
+		constexpr std::size_t GetIntegerCount()
+		{
+			if constexpr (GetSSECount<Integer, SSE, T>() == 0)
+			{
+				if constexpr (Integer < 6 && (std::is_integral_v<T> || std::is_pointer_v<T> || !std::is_trivially_copyable_v<T> || !std::is_trivially_destructible_v<T>) )
+					return 1;
+				else if constexpr (sizeof(T) < 16 && (sizeof(T) + 7) / 8 < 6 - Integer)
+					return (sizeof(T) + 7) / 8;
+				else
+					return 0;
+			}
+			else
+			{
+				return 0;
+			}
+		}
+
+		template <std::size_t Integer, std::size_t SSE, class T>
+		static constexpr std::size_t SSECount = GetSSECount<Integer, SSE, T>();
+		template <std::size_t Integer, std::size_t SSE, class T>
+		static constexpr std::size_t IntegerCount = GetIntegerCount<Integer, SSE, T>();
+
 		template <class T>
 		void RequiredStackAddressSize(std::size_t& rsp)
 		{
@@ -186,13 +208,8 @@ namespace Fibers
 		template <std::size_t Integer, std::size_t SSE, class T, class... Ts>
 		void RequiredStackSize(std::size_t& rsp)
 		{
-			constexpr std::size_t SSEInc     = std::is_floating_point_v<T> && SSE < 8 ? 1 : 0;
-			constexpr std::size_t IntegerInc = SSEInc == 0 ? (std::is_integral_v<T> || std::is_pointer_v<T> || !std::is_trivially_copyable_v<T> || !std::is_trivially_destructible_v<T>) &&Integer < 6 ? 1 : sizeof(T) < 16 && (sizeof(T) + 7) / 8 < 6 - Integer ? (sizeof(T) + 7) / 8 :
-                                                                                                                                                                                                                                                                   0 :
-                                                             0;
-
 			if constexpr (sizeof...(Ts) > 0)
-				RequiredStackSize<Integer + IntegerInc, SSE + SSEInc, Ts...>(rsp);
+				RequiredStackSize<Integer + IntegerCount<Integer, SSE, T>, SSE + SSECount<Integer, SSE, T>, Ts...>(rsp);
 
 			if constexpr (!std::is_trivially_copyable_v<T> || !std::is_trivially_destructible_v<T>)
 			{
@@ -222,13 +239,8 @@ namespace Fibers
 		template <std::size_t Integer, std::size_t SSE, std::size_t I, class T, class... Ts>
 		void PushArgument(RegisterState& state, std::vector<std::uintptr_t>& arguments, T&& v, Ts&&... vs)
 		{
-			constexpr std::size_t SSEInc     = std::is_floating_point_v<T> && SSE < 8 ? 1 : 0;
-			constexpr std::size_t IntegerInc = SSEInc == 0 ? (std::is_integral_v<T> || std::is_pointer_v<T> || !std::is_trivially_copyable_v<T> || !std::is_trivially_destructible_v<T>) &&Integer < 6 ? 1 : sizeof(T) < 16 && (sizeof(T) + 7) / 8 < 6 - Integer ? (sizeof(T) + 7) / 8 :
-                                                                                                                                                                                                                                                                   0 :
-                                                             0;
-
 			if constexpr (sizeof...(Ts) > 0)
-				PushArgument<Integer + IntegerInc, SSE + SSEInc, I + 1, Ts...>(state, arguments, std::forward<Ts>(vs)...);
+				PushArgument<Integer + IntegerCount<Integer, SSE, T>, SSE + SSECount<Integer, SSE, T>, I + 1, Ts...>(state, arguments, std::forward<Ts>(vs)...);
 
 			if (arguments[I + 1])
 			{
@@ -292,9 +304,8 @@ namespace Fibers
 				{
 					constexpr std::size_t Regs = (sizeof(T) + 7) / 8;
 
-					T* temp = reinterpret_cast<T*>(malloc(Regs * 8));
-					std::memset(temp, 0, Regs * 8);
-					*temp = std::forward<T>(v);
+					T* temp = reinterpret_cast<T*>(calloc(1, Regs * 8));
+					*temp   = std::forward<T>(v);
 
 					std::size_t reg = Integer;
 					for (std::size_t i = 0; i < Regs; ++i, ++reg)
@@ -361,9 +372,98 @@ namespace Fibers
 			state.pushq(returnAddress);
 		}
 
-		template <class... Ts, std::size_t... Is>
-		void DestroyArguments(struct RegisterState& state, const std::vector<std::uintptr_t>& arguments, const std::index_sequence<Is...>&)
+		template <std::size_t Integer, std::size_t SSE, std::size_t I, class T, class... Ts>
+		void DestroyArgument(RegisterState& state, const std::vector<std::uintptr_t>& arguments)
 		{
+			if constexpr (sizeof...(Ts) > 0)
+				DestroyArgument<Integer + IntegerCount<Integer, SSE, T>, SSE + SSECount<Integer, SSE, T>, I + 1, Ts...>(state, arguments);
+
+			if (arguments[I + 1])
+			{
+				reinterpret_cast<T*>(arguments[I + 1])->~T();
+			}
+			else
+			{
+				if constexpr (std::is_integral_v<T> || std::is_pointer_v<T>)
+				{
+					if constexpr (Integer == 0)
+						reinterpret_cast<T*>(&state.m_RDI)->~T();
+					else if constexpr (Integer == 1)
+						reinterpret_cast<T*>(&state.m_RSI)->~T();
+					else if constexpr (Integer == 2)
+						reinterpret_cast<T*>(&state.m_RDX)->~T();
+					else if constexpr (Integer == 3)
+						reinterpret_cast<T*>(&state.m_RCX)->~T();
+					else if constexpr (Integer == 4)
+						reinterpret_cast<T*>(&state.m_R8)->~T();
+					else if constexpr (Integer == 5)
+						reinterpret_cast<T*>(&state.m_R9)->~T();
+				}
+				else if constexpr (std::is_floating_point_v<T>)
+				{
+					if constexpr (SSE == 0)
+						reinterpret_cast<T*>(&state.m_XMM0)->~T();
+					else if constexpr (SSE == 1)
+						reinterpret_cast<T*>(&state.m_XMM1)->~T();
+					else if constexpr (SSE == 2)
+						reinterpret_cast<T*>(&state.m_XMM2)->~T();
+					else if constexpr (SSE == 3)
+						reinterpret_cast<T*>(&state.m_XMM3)->~T();
+					else if constexpr (SSE == 4)
+						reinterpret_cast<T*>(&state.m_XMM4)->~T();
+					else if constexpr (SSE == 5)
+						reinterpret_cast<T*>(&state.m_XMM5)->~T();
+					else if constexpr (SSE == 6)
+						reinterpret_cast<T*>(&state.m_XMM6)->~T();
+					else if constexpr (SSE == 7)
+						reinterpret_cast<T*>(&state.m_XMM7)->~T();
+				}
+				else if constexpr (sizeof(T) < 16)
+				{
+					constexpr std::size_t Regs = (sizeof(T) + 7) / 8;
+
+					T* temp = reinterpret_cast<T*>(calloc(1, Regs * 8));
+
+					std::size_t reg = Integer;
+					for (std::size_t i = 0; i < Regs; ++i, ++reg)
+					{
+						std::uint64_t value;
+
+						switch (reg)
+						{
+						case 0:
+							value = state.m_RDI;
+							break;
+						case 1:
+							value = state.m_RSI;
+							break;
+						case 2:
+							value = state.m_RDX;
+							break;
+						case 3:
+							value = state.m_RCX;
+							break;
+						case 4:
+							value = state.m_R8;
+							break;
+						case 5:
+							value = state.m_R9;
+							break;
+						}
+
+						reinterpret_cast<std::uint64_t*>(temp)[i] = value;
+					}
+
+					temp->~T();
+					free(temp);
+				}
+			}
+		}
+
+		template <class... Ts, std::size_t... Is>
+		void DestroyArguments(RegisterState& state, const std::vector<std::uintptr_t>& arguments, const std::index_sequence<Is...>&)
+		{
+			DestroyArgument<0, 0, 0, Ts...>(state, arguments);
 			state.m_RSP = arguments[0];
 		}
 	} // namespace SYSVAbi
@@ -407,7 +507,7 @@ namespace Fibers
 	}
 
 	template <class... Ts>
-	void DestroyArguments(ECallingConvention callingConvention, struct RegisterState& state, const std::vector<std::uintptr_t>& arguments)
+	void DestroyArguments(ECallingConvention callingConvention, RegisterState& state, const std::vector<std::uintptr_t>& arguments)
 	{
 		switch (callingConvention)
 		{
