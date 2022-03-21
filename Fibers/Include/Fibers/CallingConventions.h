@@ -10,6 +10,41 @@
 
 namespace Fibers
 {
+	namespace Utils
+	{
+		template <class T>
+		struct ConstType
+		{
+			using Type = T;
+		};
+
+		template <std::size_t S>
+		struct SizedInt;
+
+		template <>
+		struct SizedInt<1> : public ConstType<std::uint8_t>
+		{
+		};
+
+		template <>
+		struct SizedInt<2> : public ConstType<std::uint16_t>
+		{
+		};
+
+		template <>
+		struct SizedInt<4> : public ConstType<std::uint32_t>
+		{
+		};
+
+		template <>
+		struct SizedInt<8> : public ConstType<std::uint64_t>
+		{
+		};
+
+		template <std::size_t S>
+		using SizedIntT = typename SizedInt<S>::Type;
+	} // namespace Utils
+
 	template <class T>
 	std::size_t RequiredSize(ECallingConvention callingConvention);
 
@@ -259,26 +294,28 @@ namespace Fibers
 						std::uint64_t value;
 						if (i < Regs - 1)
 							value = reinterpret_cast<std::uint64_t*>(temp)[i];
+						else
+							value = *reinterpret_cast<Utils::SizedIntT<sizeof(T) - Regs - 1>*>(reinterpret_cast<std::uint8_t*>(temp) + i * 8);
 
 						switch (reg)
 						{
 						case 0:
-							*reinterpret_cast<T*>(&state.m_RDI) = std::forward<T>(v);
+							*reinterpret_cast<T*>(&state.m_RDI) = value;
 							break;
 						case 1:
-							*reinterpret_cast<T*>(&state.m_RSI) = std::forward<T>(v);
+							*reinterpret_cast<T*>(&state.m_RSI) = value;
 							break;
 						case 2:
-							*reinterpret_cast<T*>(&state.m_RDX) = std::forward<T>(v);
+							*reinterpret_cast<T*>(&state.m_RDX) = value;
 							break;
 						case 3:
-							*reinterpret_cast<T*>(&state.m_RCX) = std::forward<T>(v);
+							*reinterpret_cast<T*>(&state.m_RCX) = value;
 							break;
 						case 4:
-							*reinterpret_cast<T*>(&state.m_R8) = std::forward<T>(v);
+							*reinterpret_cast<T*>(&state.m_R8) = value;
 							break;
 						case 5:
-							*reinterpret_cast<T*>(&state.m_R9) = std::forward<T>(v);
+							*reinterpret_cast<T*>(&state.m_R9) = value;
 							break;
 						}
 					}
@@ -342,7 +379,7 @@ namespace Fibers
 	std::size_t RequiredAlignedSize(ECallingConvention callingConvention, std::uintptr_t& rsp, std::uint64_t minAlignment)
 	{
 		std::size_t allocationSize = RequiredSize<T>(callingConvention);
-		std::size_t alignment      = std::max(minAlignment, alignof(T));
+		std::size_t alignment      = std::max(minAlignment, static_cast<std::uint64_t>(alignof(T)));
 		std::size_t diff           = rsp;
 		rsp                        = (rsp - allocationSize) / alignment * alignment;
 		diff -= rsp;

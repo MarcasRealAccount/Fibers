@@ -1,9 +1,9 @@
 %include "Fibers/State.asminc"
 
-extern fibers_msabi_store
-extern fibers_msabi_restore
-extern fibers_sysvabi_store
-extern fibers_sysvabi_restore
+ExternLabel fibers_msabi_store
+ExternLabel fibers_msabi_restore
+ExternLabel fibers_sysvabi_store
+ExternLabel fibers_sysvabi_restore
 
 %if BUILD_IS_SYSTEM_WINDOWS
 
@@ -19,11 +19,11 @@ GlobalLabel fibers_storerestore ; RCX => storeState, RDX => returnAddress, R8 =>
 		jmp [rax + r10 * 8]
 
 		.StoreMSAbi:
-			call fibers_msabi_store
+		    LabelCall fibers_msabi_store
 			jmp .Restore
 
 		.StoreSYSVAbi:
-			call fibers_sysvabi_store
+		    LabelCall fibers_sysvabi_store
 			jmp .Restore
 		
 		.StoreJmpTable:
@@ -39,11 +39,11 @@ GlobalLabel fibers_storerestore ; RCX => storeState, RDX => returnAddress, R8 =>
 		jmp [rax + r10 * 8]
 
 		.RestoreMSAbi:
-			call fibers_msabi_restore
+		    LabelCall fibers_msabi_restore
 			jmp .Exit
 
 		.RestoreSYSVAbi:
-			call fibers_sysvabi_restore
+		    LabelCall fibers_sysvabi_restore
 			jmp .Exit
 		
 		.RestoreJmpTable:
@@ -75,11 +75,11 @@ GlobalLabel fibers_storerestore ; RDI => storeState, RSI => returnAddress, RDX =
 			dq .StoreSYSVAbi - .StoreJmpTable
 
 		.StoreMSAbi:
-			call fibers_msabi_store
+		    LabelCall fibers_msabi_store
 			jmp .Restore
 
 		.StoreSYSVAbi:
-			call fibers_sysvabi_store
+		    LabelCall fibers_sysvabi_store
 			jmp .Restore
 
 	.Restore:
@@ -97,11 +97,11 @@ GlobalLabel fibers_storerestore ; RDI => storeState, RSI => returnAddress, RDX =
 			dq .RestoreSYSVAbi - .RestoreJmpTable
 
 		.RestoreMSAbi:
-			call fibers_msabi_restore
+		    LabelCall fibers_msabi_restore
 			jmp .Exit
 
 		.RestoreSYSVAbi:
-			call fibers_sysvabi_restore
+		    LabelCall fibers_sysvabi_restore
 			jmp .Exit
 
 	.Exit:
