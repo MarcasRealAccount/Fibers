@@ -54,10 +54,32 @@ p.override(cpp, "createRuleTable", function(base, prj)
 end)
 
 local function archToNASM(architecture)
-	if architecture == "x86" then
-		return "win32"
+	if common.target == "windows" then
+		if architecture == "x86" then
+			return "win32"
+		else
+			return "win64"
+		end
+	elseif common.target == "macosx" then
+		if architecture == "x86" then
+			return "macho32"
+		else
+			return "macho64"
+		end
 	else
-		return "win64"
+		if architecture == "x86" then
+			return "elf32"
+		else
+			return "elf64"
+		end
+	end
+end
+
+function errorReport()
+	if common.target == "windows" then
+		return "vc"
+	else
+		return "gnu"
 	end
 end
 
@@ -73,7 +95,7 @@ cpp.nasmOptimizeFlags = {
 function cpp.asmFileFlags(cfg, file)
 	local fcfg = p.fileconfig.getconfig(file, cfg)
 	cfg        = fcfg.config
-	local command = "-Xvc -f " .. archToNASM(cfg.architecture)
+	local command = "-X" .. errorReport() .. " -f " .. archToNASM(cfg.architecture)
 	
 	for _, inc in ipairs(cfg.includedirs) do
 		command = command .. " -i \"" .. inc .. "\""
