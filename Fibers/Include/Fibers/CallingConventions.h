@@ -73,7 +73,7 @@ namespace Fibers
 		using ToNativeT = typename ToNative<T>::Type;
 
 		template <class T>
-		[[nodiscard]] constexpr auto ToNativeVal(std::remove_reference_t<T>& original) noexcept
+		[[nodiscard]] constexpr std::conditional_t<std::is_reference_v<T>, ToNativeT<T>, ToNativeT<T>&&> ToNativeVal(std::remove_reference_t<T>& original) noexcept
 		{
 			if constexpr (std::is_reference_v<T>)
 				return reinterpret_cast<ToNativeT<T>>(&original);
@@ -82,7 +82,7 @@ namespace Fibers
 		}
 
 		template <class T>
-		[[nodiscard]] constexpr auto ToNativeVal(std::remove_reference_t<T>&& original) noexcept
+		[[nodiscard]] constexpr std::conditional_t<std::is_reference_v<T>, ToNativeT<T>, ToNativeT<T>&&> ToNativeVal(std::remove_reference_t<T>&& original) noexcept
 		{
 			if constexpr (std::is_reference_v<T>)
 				return reinterpret_cast<ToNativeT<T>>(&original);
