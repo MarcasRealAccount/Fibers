@@ -3,6 +3,7 @@
 #include "CallingConvention.h"
 #include "Stack.h"
 #include "State.h"
+#include "Utils/Utils.h"
 
 #include <cstring>
 
@@ -10,87 +11,6 @@
 
 namespace Fibers
 {
-	namespace Utils
-	{
-		template <class T>
-		struct ConstType
-		{
-			using Type = T;
-		};
-
-		template <std::size_t S>
-		struct SizedInt;
-
-		template <>
-		struct SizedInt<1> : public ConstType<std::uint8_t>
-		{
-		};
-
-		template <>
-		struct SizedInt<2> : public ConstType<std::uint16_t>
-		{
-		};
-
-		template <>
-		struct SizedInt<4> : public ConstType<std::uint32_t>
-		{
-		};
-
-		template <>
-		struct SizedInt<8> : public ConstType<std::uint64_t>
-		{
-		};
-
-		template <std::size_t S>
-		using SizedIntT = typename SizedInt<S>::Type;
-
-		template <class T>
-		struct ToNative : public ConstType<T>
-		{
-		};
-
-		template <class T>
-		struct ToNative<T&> : public ConstType<std::uintptr_t>
-		{
-		};
-
-		template <class T>
-		struct ToNative<const T&> : public ConstType<std::uintptr_t>
-		{
-		};
-
-		template <class T>
-		struct ToNative<volatile T&> : public ConstType<std::uintptr_t>
-		{
-		};
-
-		template <class T>
-		struct ToNative<const volatile T&> : public ConstType<std::uintptr_t>
-		{
-		};
-
-		template <class T>
-		using ToNativeT = typename ToNative<T>::Type;
-
-		template <class T>
-		[[nodiscard]] constexpr std::conditional_t<std::is_reference_v<T>, ToNativeT<T>, ToNativeT<T>&&> ToNativeVal(std::remove_reference_t<T>& original) noexcept
-		{
-			if constexpr (std::is_reference_v<T>)
-				return reinterpret_cast<ToNativeT<T>>(&original);
-			else
-				return static_cast<ToNativeT<T>&&>(original);
-		}
-
-		template <class T>
-		[[nodiscard]] constexpr std::conditional_t<std::is_reference_v<T>, ToNativeT<T>, ToNativeT<T>&&> ToNativeVal(std::remove_reference_t<T>&& original) noexcept
-		{
-			if constexpr (std::is_reference_v<T>)
-				return reinterpret_cast<ToNativeT<T>>(&original);
-			else
-				return static_cast<ToNativeT<T>&&>(original);
-		}
-	} // namespace Utils
-
 	template <class T>
 	std::size_t RequiredSize(ECallingConvention callingConvention);
 
@@ -358,9 +278,16 @@ namespace Fibers
 					{
 						std::uint64_t value;
 						if (i < Regs - 1)
+						{
 							value = reinterpret_cast<std::uint64_t*>(temp)[i];
+						}
 						else
-							value = *reinterpret_cast<Utils::SizedIntT<sizeof(T) - Regs - 1>*>(reinterpret_cast<std::uint8_t*>(temp) + i * 8);
+						{
+							std::uint8_t* pV = reinterpret_cast<std::uint8_t*>(&value);
+							std::uint8_t* pT = reinterpret_cast<std::uint8_t*>(temp) + i * 8;
+							for (std::size_t j = 0; j < sizeof(T) - (Regs - 1) * 8; ++j)
+								pV[j] = pT[j];
+						}
 
 						switch (reg)
 						{

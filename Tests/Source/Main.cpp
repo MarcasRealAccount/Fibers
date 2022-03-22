@@ -2,6 +2,7 @@
 #include <Fibers/FiberLocal.h>
 
 #include <iostream>
+#include <thread>
 
 struct Object
 {
@@ -20,6 +21,11 @@ struct Object
 
 Fibers::FiberLocal<int> fiberLocal;
 
+void otherThread(Fibers::Fiber& fiber)
+{
+	fiber.resume();
+}
+
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
 	Fibers::Fiber otherFiber {
@@ -27,16 +33,12 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 		65536,
 		[]()
 		{
-		    int j = 0;
-		    Fibers::Yield(
-		        [&j]()
-		        {
-			        std::cout << j << '\n';
-			        ++j;
-			        return j <= 2;
-		        });
+		    using namespace std::chrono_literals;
+		    std::this_thread::sleep_for(2s);
 		}
 	};
+
+	std::thread t { otherThread, std::ref(otherFiber) };
 
 	Fibers::Fiber fiber {
 		Fibers::ECallingConvention::Native,
@@ -75,6 +77,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 	fiber.resume();
 	std::cout << "Ok\n";
 	while (!fiber.resume())
-		otherFiber.resume();
+		;
 	std::cout << "Godlike\n";
+
+	t.join();
 }
