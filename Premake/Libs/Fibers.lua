@@ -15,16 +15,16 @@ function fibers:setup()
 	kind("StaticLib")
 	common:outDirs(false)
 	
-	common:addPCH("%{prj.location}/Source/PCH.cpp", "%{prj.location/Source/PCH.h")
+	common:addPCH(self.location .. "/Source/PCH.cpp", self.location .. "/Source/PCH.h")
 
 	includedirs({
-		"%{prj.location}/Include/",
-		"%{prj.location}/Source/"
+		self.location .. "/Include/",
+		self.location .. "/Source/"
 	})
 
 	files({
-		"%{prj.location}/Include/**",
-		"%{prj.location}/Source/**"
+		self.location .. "/Include/**",
+		self.location .. "/Source/**"
 	})
 	removefiles({ "*.DS_Store" })
 end
