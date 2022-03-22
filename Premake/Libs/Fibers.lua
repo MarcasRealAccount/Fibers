@@ -6,9 +6,9 @@ if not libs.fibers then
 	}
 end
 
-require("Premake/Module/cmake/cmake_project_ext")
-require("Premake/Module/vstudio/vs2010_vcxproj_ext")
-require("Premake/Module/gmake2/gmake2_cpp_ext")
+require("../Module/cmake/cmake_project_ext")
+require("../Module/vstudio/vs2010_vcxproj_ext")
+require("../Module/gmake2/gmake2_cpp_ext")
 
 local fibers = libs.fibers
 
