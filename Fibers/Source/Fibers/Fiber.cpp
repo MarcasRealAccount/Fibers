@@ -63,6 +63,12 @@ namespace Fibers
 			fiber->yield();
 	}
 
+	void WaitFor(class Fiber& fiber)
+	{
+		while (!fiber.isFinished())
+			Yield();
+	}
+
 	void ExitFiber()
 	{
 		GetCurrentFiber()->exit();
@@ -126,10 +132,10 @@ namespace Fibers
 		RemoveFiber(this);
 	}
 
-	void Fiber::resume()
+	bool Fiber::resume()
 	{
 		if (m_Finished)
-			return;
+			return true;
 
 		s_FiberStack.push_back(this);
 		auto entry = m_Entry;
@@ -137,6 +143,7 @@ namespace Fibers
 			m_Entry = false;
 		m_Inside = true;
 		StoreAndRestore(m_ReturnState, nullptr, m_State, entry);
+		return m_Finished;
 	}
 
 	void Fiber::exit()

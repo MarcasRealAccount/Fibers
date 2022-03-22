@@ -13,6 +13,7 @@ namespace Fibers
 	class Fiber* GetFiber(std::uint64_t id);
 
 	void Yield();
+	void WaitFor(class Fiber& fiber);
 	void ExitFiber();
 
 	template <class Function, class... Ts>
@@ -39,7 +40,7 @@ namespace Fibers
 		Fiber(ECallingConvention callingConvention, std::size_t stackSize);
 		template <class Function, class... Ts>
 		requires Callable<Function, Ts...>
-		Fiber(ECallingConvention callingConvention, std::size_t stackSize, Function&& function, Ts&&... vs);
+		Fiber(ECallingConvention callingConvention, std::size_t stackSize, Function&& function, Ts&& ... vs);
 		Fiber(Fiber&& move) noexcept;
 		Fiber& operator=(Fiber&& move) noexcept;
 		~Fiber();
@@ -48,7 +49,7 @@ namespace Fibers
 		requires Callable<Function, Ts...>
 		void setFunction(Function&& function, Ts&&... vs);
 
-		void resume();
+		bool resume();
 		void exit();
 		void yield();
 

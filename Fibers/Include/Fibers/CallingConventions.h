@@ -43,6 +43,52 @@ namespace Fibers
 
 		template <std::size_t S>
 		using SizedIntT = typename SizedInt<S>::Type;
+
+		template <class T>
+		struct ToNative : public ConstType<T>
+		{
+		};
+
+		template <class T>
+		struct ToNative<T&> : public ConstType<std::uintptr_t>
+		{
+		};
+
+		template <class T>
+		struct ToNative<const T&> : public ConstType<std::uintptr_t>
+		{
+		};
+
+		template <class T>
+		struct ToNative<volatile T&> : public ConstType<std::uintptr_t>
+		{
+		};
+
+		template <class T>
+		struct ToNative<const volatile T&> : public ConstType<std::uintptr_t>
+		{
+		};
+
+		template <class T>
+		using ToNativeT = typename ToNative<T>::Type;
+
+		template <class T>
+		[[nodiscard]] constexpr auto ToNativeVal(std::remove_reference_t<T>& original) noexcept
+		{
+			if constexpr (std::is_reference_v<T>)
+				return reinterpret_cast<ToNativeT<T>>(&original);
+			else
+				return static_cast<ToNativeT<T>&&>(original);
+		}
+
+		template <class T>
+		[[nodiscard]] constexpr auto ToNativeVal(std::remove_reference_t<T>&& original) noexcept
+		{
+			if constexpr (std::is_reference_v<T>)
+				return reinterpret_cast<ToNativeT<T>>(&original);
+			else
+				return static_cast<ToNativeT<T>&&>(original);
+		}
 	} // namespace Utils
 
 	template <class T>
@@ -70,7 +116,7 @@ namespace Fibers
 		}
 
 		template <class T, std::size_t I>
-		void AddStackAddress(std::vector<std::uintptr_t>& arguments, RegisterState& state, T&& v)
+		void AddStackAddress(std::vector<std::uintptr_t>& arguments, RegisterState& state, std::remove_reference_t<T>&& v)
 		{
 			if constexpr (sizeof(T) > 8)
 			{
@@ -80,7 +126,7 @@ namespace Fibers
 		}
 
 		template <std::size_t I, class T, class... Ts>
-		void PushArgument(std::vector<std::uintptr_t>& arguments, RegisterState& state, T&& v, Ts&&... vs)
+		void PushArgument(std::vector<std::uintptr_t>& arguments, RegisterState& state, std::remove_reference_t<T>&& v, std::remove_reference_t<Ts>&&... vs)
 		{
 			if constexpr (sizeof...(Ts) > 0)
 				PushArgument<I + 1, Ts...>(arguments, state, std::forward<Ts>(vs)...);
@@ -134,7 +180,7 @@ namespace Fibers
 		}
 
 		template <class... Ts, std::size_t... Is>
-		void PushArguments(RegisterState& state, std::vector<std::uintptr_t>& arguments, std::uintptr_t returnAddress, Ts&&... vs, const std::index_sequence<Is...>&)
+		void PushArguments(RegisterState& state, std::vector<std::uintptr_t>& arguments, std::uintptr_t returnAddress, std::remove_reference_t<Ts>&&... vs, const std::index_sequence<Is...>&)
 		{
 			arguments.resize(sizeof...(Ts) + 1);
 			arguments[0] = state.m_RSP;
@@ -227,7 +273,7 @@ namespace Fibers
 		}
 
 		template <class T, std::size_t I>
-		void AddStackAddress(std::vector<std::uintptr_t>& arguments, RegisterState& state, T&& v)
+		void AddStackAddress(std::vector<std::uintptr_t>& arguments, RegisterState& state, std::remove_reference_t<T>&& v)
 		{
 			if constexpr (!std::is_trivially_copyable_v<T> || !std::is_trivially_destructible_v<T>)
 			{
@@ -237,7 +283,7 @@ namespace Fibers
 		}
 
 		template <std::size_t Integer, std::size_t SSE, std::size_t I, class T, class... Ts>
-		void PushArgument(RegisterState& state, std::vector<std::uintptr_t>& arguments, T&& v, Ts&&... vs)
+		void PushArgument(RegisterState& state, std::vector<std::uintptr_t>& arguments, std::remove_reference_t<T>&& v, std::remove_reference_t<Ts>&&... vs)
 		{
 			if constexpr (sizeof...(Ts) > 0)
 				PushArgument<Integer + IntegerCount<Integer, SSE, T>, SSE + SSECount<Integer, SSE, T>, I + 1, Ts...>(state, arguments, std::forward<Ts>(vs)...);
@@ -350,7 +396,7 @@ namespace Fibers
 		}
 
 		template <class... Ts, std::size_t... Is>
-		void PushArguments(RegisterState& state, std::vector<std::uintptr_t>& arguments, std::uintptr_t returnAddress, Ts&&... vs, const std::index_sequence<Is...>&)
+		void PushArguments(RegisterState& state, std::vector<std::uintptr_t>& arguments, std::uintptr_t returnAddress, std::remove_reference_t<Ts>&&... vs, const std::index_sequence<Is...>&)
 		{
 			arguments.resize(sizeof...(Ts) + 1);
 			arguments[0] = state.m_RSP;
@@ -498,10 +544,10 @@ namespace Fibers
 		{
 		case ECallingConvention::Native: [[fallthrough]];
 		case ECallingConvention::MSAbi:
-			MSAbi::PushArguments<Ts...>(state, arguments, returnAddress, std::forward<Ts>(vs)..., std::make_index_sequence<sizeof...(Ts)>());
+			MSAbi::PushArguments<Utils::ToNativeT<Ts>...>(state, arguments, returnAddress, Utils::ToNativeVal<Ts>(vs)..., std::make_index_sequence<sizeof...(Ts)>());
 			break;
 		case ECallingConvention::SYSVAbi:
-			SYSVAbi::PushArguments<Ts...>(state, arguments, returnAddress, std::forward<Ts>(vs)..., std::make_index_sequence<sizeof...(Ts)>());
+			SYSVAbi::PushArguments<Utils::ToNativeT<Ts>...>(state, arguments, returnAddress, Utils::ToNativeVal<Ts>(vs)..., std::make_index_sequence<sizeof...(Ts)>());
 			break;
 		}
 	}
@@ -513,10 +559,10 @@ namespace Fibers
 		{
 		case ECallingConvention::Native: [[fallthrough]];
 		case ECallingConvention::MSAbi:
-			MSAbi::DestroyArguments<Ts...>(state, arguments, std::make_index_sequence<sizeof...(Ts)>());
+			MSAbi::DestroyArguments<Utils::ToNativeT<Ts>...>(state, arguments, std::make_index_sequence<sizeof...(Ts)>());
 			break;
 		case ECallingConvention::SYSVAbi:
-			SYSVAbi::DestroyArguments<Ts...>(state, arguments, std::make_index_sequence<sizeof...(Ts)>());
+			SYSVAbi::DestroyArguments<Utils::ToNativeT<Ts>...>(state, arguments, std::make_index_sequence<sizeof...(Ts)>());
 			break;
 		}
 	}

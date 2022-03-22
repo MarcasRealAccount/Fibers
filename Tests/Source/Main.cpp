@@ -22,10 +22,26 @@ Fibers::FiberLocal<int> fiberLocal;
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
+	Fibers::Fiber otherFiber {
+		Fibers::ECallingConvention::Native,
+		65536,
+		[]()
+		{
+		    int j = 0;
+		    Fibers::Yield(
+		        [&j]()
+		        {
+			        std::cout << j << '\n';
+			        ++j;
+			        return j <= 2;
+		        });
+		}
+	};
+
 	Fibers::Fiber fiber {
 		Fibers::ECallingConvention::Native,
 		65536,
-		[](int a, float b, int c, float d, Object func, int e, int f, int g, int h, int i)
+		[](int a, float b, int c, float d, Object func, int e, int f, int g, int h, int i, Fibers::Fiber& otherFiber)
 		{
 		    fiberLocal = c;
 
@@ -45,28 +61,20 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 			    }
 		    };
 
-		    anotherFiber.resume();
+		    std::cout << (anotherFiber.resume() ? "true" : "false") << '\n';
 
-		    int j = 0;
-		    Fibers::Yield(
-		        [&j]()
-		        {
-			        std::cout << j << '\n';
-			        ++j;
-			        return j < 2;
-		        });
+		    Fibers::WaitFor(otherFiber);
 
 		    std::cout << a << ", " << b << ", " << fiberLocal << ", " << d << ", " << e << ", " << f << ", " << g << ", " << h << ", " << i << '\n';
 		    std::cout << "Even nicer\n";
 		    func();
 		},
-		1, 2.2f, 3, 4.4f, Object { 1 }, 6, 7, 8, 9, 10
+		1, 2.2f, 3, 4.4f, Object { 1 }, 6, 7, 8, 9, 10, otherFiber
 	};
 
 	fiber.resume();
 	std::cout << "Ok\n";
-	fiber.resume();
-	fiber.resume();
-	fiber.resume();
+	while (!fiber.resume())
+		otherFiber.resume();
 	std::cout << "Godlike\n";
 }

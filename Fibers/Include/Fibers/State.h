@@ -30,6 +30,10 @@ namespace Fibers
 		std::uint64_t popq();
 
 		template <class T>
+		std::size_t push(const T& v);
+		template <class T>
+		std::size_t push(const T& v, std::size_t minimumAlignment);
+		template <class T>
 		std::size_t push(T&& v);
 		template <class T>
 		std::size_t push(T&& v, std::size_t minimumAlignment);
@@ -57,6 +61,36 @@ namespace Fibers
 
 namespace Fibers
 {
+	template <class T>
+	std::size_t RegisterState::push(const T& v)
+	{
+		std::size_t allocationSize = RequiredSize<T>(m_CallingConvention);
+
+		constexpr std::size_t alignment = alignof(T);
+		std::size_t           diff      = m_RSP;
+
+		m_RSP = (m_RSP - allocationSize) / alignment * alignment;
+		diff  = diff - m_RSP;
+
+		*reinterpret_cast<T*>(m_RSP) = v;
+		return allocationSize + diff;
+	}
+
+	template <class T>
+	std::size_t RegisterState::push(const T& v, std::size_t minimumAlignment)
+	{
+		std::size_t allocationSize = RequiredSize<T>(m_CallingConvention);
+
+		std::size_t alignment = std::max(minimumAlignment, alignof(T));
+		std::size_t diff      = m_RSP;
+
+		m_RSP = (m_RSP - allocationSize) / alignment * alignment;
+		diff -= m_RSP;
+
+		*reinterpret_cast<T*>(m_RSP) = v;
+		return allocationSize + diff;
+	}
+
 	template <class T>
 	std::size_t RegisterState::push(T&& v)
 	{
