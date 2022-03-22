@@ -102,7 +102,7 @@ namespace Fibers
 		m_RSP = (m_RSP - allocationSize) / alignment * alignment;
 		diff  = diff - m_RSP;
 
-		*reinterpret_cast<T*>(m_RSP) = std::forward<T>(v);
+		*reinterpret_cast<T*>(m_RSP) = std::move(v);
 		return allocationSize + diff;
 	}
 
@@ -117,7 +117,7 @@ namespace Fibers
 		m_RSP = (m_RSP - allocationSize) / alignment * alignment;
 		diff -= m_RSP;
 
-		*reinterpret_cast<T*>(m_RSP) = std::forward<T>(v);
+		*reinterpret_cast<T*>(m_RSP) = std::move(v);
 		return allocationSize + diff;
 	}
 
