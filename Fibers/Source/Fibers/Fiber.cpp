@@ -163,7 +163,8 @@ namespace Fibers
 			m_ArgumentDestructor(*this);
 		if (m_FunctionDestructor)
 			m_FunctionDestructor(*this);
-		m_ReturnState.restore();
+		if (m_Inside)
+			m_ReturnState.restore();
 	}
 
 	void Fiber::yield()
